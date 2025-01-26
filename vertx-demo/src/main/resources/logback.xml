@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration
   debug="false" scan="true" scanPeriod="30 second">
-  <property name="ROOT" value="../bucket/log/"/>
-  <property name="APPNAME" value="vertx-fw"/>
+  <property name="ROOT" value="./log/"/>
+  <property name="APPNAME" value="vertx-demo"/>
   <property name="FILESIZE" value="500MB"/>
   <property name="MAXHISTORY" value="100"/>
+
   <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
     <Target>System.out</Target>
     <encoder charset="utf-8">
@@ -12,6 +13,7 @@
       </pattern>
     </encoder>
   </appender>
+
   <appender name="WARN" class="ch.qos.logback.core.rolling.RollingFileAppender">
     <encoder charset="utf-8">
       <pattern>[%-5level] %d [%thread] %class{36}.%M:%L - %m%n
@@ -28,18 +30,21 @@
       <fileNamePattern>${ROOT}${APPNAME}-%d-warn.%i.log</fileNamePattern>
       <maxHistory>${MAXHISTORY}</maxHistory>
       <timeBasedFileNamingAndTriggeringPolicy
-        class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+              class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
         <maxFileSize>${FILESIZE}</maxFileSize>
       </timeBasedFileNamingAndTriggeringPolicy>
     </rollingPolicy>
   </appender>
+
   <appender name="INFO" class="ch.qos.logback.core.rolling.RollingFileAppender">
     <encoder charset="utf-8">
       <pattern>[%-5level] %d [%thread] %class{36}.%M:%L - %m%n
       </pattern>
     </encoder>
     <filter class="ch.qos.logback.classic.filter.LevelFilter">
-      <level>INFO</level>
+      <evaluator>
+        <expression>return level &gt;= INFO;</expression>
+      </evaluator>
       <onMatch>ACCEPT</onMatch>
       <onMismatch>DENY</onMismatch>
     </filter>
@@ -47,52 +52,59 @@
       <fileNamePattern>${ROOT}${APPNAME}-%d-info.%i.log</fileNamePattern>
       <maxHistory>${MAXHISTORY}</maxHistory>
       <timeBasedFileNamingAndTriggeringPolicy
-        class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+              class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
         <maxFileSize>${FILESIZE}</maxFileSize>
       </timeBasedFileNamingAndTriggeringPolicy>
     </rollingPolicy>
   </appender>
+
   <appender name="DEBUG" class="ch.qos.logback.core.rolling.RollingFileAppender">
     <encoder charset="utf-8">
       <pattern>[%-5level] %d [%thread] %class{36}.%M:%L - %m%n
       </pattern>
     </encoder>
     <filter class="ch.qos.logback.classic.filter.LevelFilter">
-      <level>DEBUG</level>
+      <evaluator>
+        <expression>return level &gt;= DEBUG;</expression>
+      </evaluator>
       <onMatch>ACCEPT</onMatch>
       <onMismatch>DENY</onMismatch>
     </filter>
     <rollingPolicy
-      class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-      <fileNamePattern>${ROOT}${APPNAME}-%d-debug.%i.log</fileNamePattern>
+            class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      <fileNamePattern>${ROOT}${APPNAME}-%d-info.%i.log</fileNamePattern>
       <maxHistory>${MAXHISTORY}</maxHistory>
       <timeBasedFileNamingAndTriggeringPolicy
-        class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+              class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
         <maxFileSize>${FILESIZE}</maxFileSize>
       </timeBasedFileNamingAndTriggeringPolicy>
     </rollingPolicy>
   </appender>
+
   <appender name="TRACE" class="ch.qos.logback.core.rolling.RollingFileAppender">
     <encoder charset="utf-8">
       <pattern>[%-5level] %d [%thread] %class{36}.%M:%L - %m%n
       </pattern>
     </encoder>
     <filter class="ch.qos.logback.classic.filter.LevelFilter">
-      <level>TRACE</level>
+      <evaluator>
+        <expression>return level &gt;= TRACE;</expression>
+      </evaluator>
       <onMatch>ACCEPT</onMatch>
       <onMismatch>DENY</onMismatch>
     </filter>
     <rollingPolicy
-      class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-      <fileNamePattern>${ROOT}${APPNAME}-%d-trace.%i.log</fileNamePattern>
+            class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      <fileNamePattern>${ROOT}${APPNAME}-%d-info.%i.log</fileNamePattern>
       <maxHistory>${MAXHISTORY}</maxHistory>
       <timeBasedFileNamingAndTriggeringPolicy
-        class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+              class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
         <maxFileSize>${FILESIZE}</maxFileSize>
       </timeBasedFileNamingAndTriggeringPolicy>
     </rollingPolicy>
   </appender>
-  <root level="INFO">
+
+  <root level="DEBUG">
     <appender-ref ref="STDOUT"/>
     <appender-ref ref="WARN"/>
     <appender-ref ref="INFO"/>

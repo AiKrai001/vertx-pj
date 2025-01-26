@@ -1,158 +1,300 @@
 package org.aikrai.vertx.db
 
+import cn.hutool.core.util.IdUtil
 import cn.hutool.core.util.StrUtil
 import com.fasterxml.jackson.core.type.TypeReference
+import com.fasterxml.jackson.databind.type.TypeFactory
 import io.vertx.kotlin.coroutines.coAwait
 import io.vertx.sqlclient.*
 import io.vertx.sqlclient.templates.SqlTemplate
-import jakarta.persistence.Column
-import jakarta.persistence.Id
-import jakarta.persistence.Table
 import mu.KotlinLogging
+import org.aikrai.vertx.db.annotation.*
 import org.aikrai.vertx.db.tx.TxCtx
 import org.aikrai.vertx.jackson.JsonUtil
+import org.aikrai.vertx.utlis.Meta
+import java.lang.reflect.Field
 import java.lang.reflect.Modifier
 import java.lang.reflect.ParameterizedType
+import java.lang.reflect.Type
 import java.sql.Timestamp
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.OffsetDateTime
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.coroutines.coroutineContext
+import kotlin.reflect.KProperty1
 
 open class RepositoryImpl<TId, TEntity : Any>(
   private val sqlClient: SqlClient
 ) : Repository<TId, TEntity> {
+  private val logger = KotlinLogging.logger {}
   private val clazz: Class<TEntity> = (this::class.java.genericSuperclass as ParameterizedType)
     .actualTypeArguments[1] as Class<TEntity>
-  private val logger = KotlinLogging.logger {}
-  private val sqlTemplateMap: Map<Pair<String, String>, String> = mutableMapOf()
-  private val formatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSSXXX")
+  private val sqlMap = ConcurrentHashMap<String, ConcurrentHashMap<String, String>>()
+  private val querySqlMap = ConcurrentHashMap<String, Any>()
 
-  override suspend fun <R> execute(sql: String): R {
-    return if (sql.trimStart().startsWith("SELECT", true)) {
-      val list = SqlTemplate.forQuery(getConnection(), sql).execute(mapOf())
-        .coAwait().map { it.toJson() }
-      val jsonObject = JsonUtil.toJsonObject(list)
-      val typeReference = object : TypeReference<R>() {}
-      JsonUtil.parseObject(jsonObject, typeReference, true)
-    } else {
-      val rowCount = SqlTemplate.forUpdate(getConnection(), sql).execute(mapOf())
-        .coAwait().rowCount()
-      rowCount as R
-    }
+  // 缓存字段和映射
+  private val fields: List<Field> = clazz.declaredFields.filter {
+    !Modifier.isStatic(it.modifiers) &&
+      !it.isSynthetic &&
+      !it.isAnnotationPresent(Transient::class.java)
+  }.onEach { it.isAccessible = true }
+
+  private val fieldMappings: Map<String, String> = fields.associate { field ->
+    val fieldAnnotation = field.getAnnotation(TableField::class.java)
+    val fieldName = fieldAnnotation?.value?.takeIf { it.isNotBlank() }
+      ?: StrUtil.toUnderlineCase(field.name)
+    field.name to fieldName
   }
 
+  private val idField: Field =
+    clazz.declaredFields.find { it.isAnnotationPresent(TableId::class.java) }?.also { it.isAccessible = true }
+      ?: throw IllegalArgumentException("No @Id field found in ${clazz.simpleName}")
+
+  private val idFieldName: String = idField.getAnnotation(TableField::class.java)?.value?.takeIf { it.isNotBlank() }
+    ?: StrUtil.toUnderlineCase(idField.name)
+
+  private val tableName: String = clazz.getAnnotation(TableName::class.java)?.value?.takeIf { it.isNotBlank() }
+    ?: StrUtil.toUnderlineCase(clazz.simpleName)
+
   override suspend fun create(t: TEntity): Int {
-    val tableName = getTableName()
-    val sqlTemplate = sqlTemplateMap[Pair(tableName, "create")] ?: run {
-      val idColumnName = getIdColumnName()
-      val columnsMap = getColumnMappings()
-      // Exclude 'id' field if it's auto-generated
-      val fields = clazz.declaredFields.filter { it.name != idColumnName }
-      val columns = fields.map { columnsMap[it.name] }
-      val parameters = fields.map { it.name }
-      val sql =
-        "INSERT INTO $tableName (${columns.joinToString(", ")}) VALUES (${parameters.joinToString(", ") { "#{$it}" }})"
-      sqlTemplateMap.plus(Pair(tableName, "create")) to sql
-      sql
+    try {
+      val idAnnotation = idField.getAnnotation(TableId::class.java)
+      val idValue = idField.get(t)
+      val excludeId = idAnnotation != null && (idValue == null || idValue == 0L || idValue == -1L) &&
+        (idAnnotation.type == IdType.AUTO)
+      val sqlKey = if (excludeId) "createExcludeId" else "createIncludeId"
+
+      val sqlTemplate = getOrCreateSql(tableName, sqlKey) {
+        val columns = if (excludeId) {
+          fields.filter { it.name != idField.name }.map { fieldMappings[it.name] }
+        } else {
+          fields.map { fieldMappings[it.name] }
+        }.joinToString(", ")
+        val parameters = if (excludeId) {
+          fields.filter { it.name != idField.name }.joinToString(", ") { "#{" + it.name + "}" }
+        } else {
+          fields.joinToString(", ") { "#{" + it.name + "}" }
+        }
+        val returning = if (excludeId) " RETURNING $idFieldName" else ""
+        "INSERT INTO $tableName ($columns) VALUES ($parameters)$returning"
+      }
+
+      val params = getNonNullFields(t).let {
+        if (excludeId) it.filterKeys { key -> key != idField.name } else it
+      }.toMutableMap()
+
+      // 填充ID
+      when (idAnnotation.type) {
+        IdType.INPUT -> {
+          if (idValue == 0L || idValue == -1L) throw Meta.repository("CreateError", "must provide ID value")
+        }
+        IdType.ASSIGN_ID -> params[idField.name] = IdUtil.getSnowflakeNextId()
+        IdType.ASSIGN_UUID -> params[idField.name] = IdUtil.simpleUUID()
+        else -> {}
+      }
+      // 处理TableField注解
+      fields.forEach { field ->
+        val tableField = field.getAnnotation(TableField::class.java)
+        if (tableField != null && tableField.fill != FieldFill.DEFAULT) {
+          // fill属性不为DEFAULT时，根据fill属性填充字段
+          val value = when (tableField.fill) {
+            FieldFill.INSERT, FieldFill.UPDATE, FieldFill.INSERT_UPDATE -> {
+              when (field.type) {
+                LocalDateTime::class.java -> LocalDateTime.now()
+                Timestamp::class.java -> OffsetDateTime.ofInstant(Instant.now(), ZoneId.systemDefault())
+                else -> null
+              }
+            }
+            else -> null
+          }
+          if (value != null) params[field.name] = value
+        }
+      }
+
+      return if (excludeId) {
+        logger.debug { "SQL: $sqlTemplate ,PARAMS: $params" }
+        // 执行查询以获取生成的ID
+        val result = SqlTemplate.forQuery(getConnection(), sqlTemplate)
+          .execute(params)
+          .coAwait()
+        val rows = result.toList()
+        if (rows.isEmpty()) throw IllegalStateException("Insert failed")
+        // 提取生成的ID并回填
+        val generatedId = rows.first().getValue(idFieldName)
+        idField.set(t, generatedId)
+        1
+      } else {
+        execute(sqlTemplate, params)
+      }
+    } catch (e: Exception) {
+      logger.error(e) { "Error creating entity: $t" }
+      throw Meta.repository(e.javaClass.simpleName, e.message)
     }
-    val params = getNonNullFields(t)
-    logger.info { "SQL: $sqlTemplate,  PARAMS: $params" }
-    return SqlTemplate.forUpdate(getConnection(), sqlTemplate)
-      .execute(params)
-      .coAwait()
-      .rowCount()
   }
 
   override suspend fun delete(id: TId): Int {
-    val tableName = getTableName()
-    val sqlTemplate = sqlTemplateMap[Pair(tableName, "delete")] ?: run {
-      val idColumnName = getIdColumnName()
-      val sql = "DELETE FROM $tableName WHERE $idColumnName = #{id}"
-      sqlTemplateMap.plus(Pair(tableName, "delete")) to sql
-      sql
+    try {
+      val sqlKey = "delete"
+      val sqlTemplate = getOrCreateSql(tableName, sqlKey) {
+        "DELETE FROM $tableName WHERE $idFieldName = #{id}"
+      }
+      val params = mapOf("id" to id)
+      if (logger.isDebugEnabled) {
+        logger.debug { "SQL: $sqlTemplate, PARAMS: $params" }
+      }
+      return execute(sqlTemplate, params)
+    } catch (e: Exception) {
+      logger.error(e) { "Error deleting entity with id: $id" }
+      throw Meta.repository(e.javaClass.simpleName, e.message)
     }
-    val params = mapOf("id" to id)
-    logger.debug { "SQL: $sqlTemplate,  PARAMS: $params" }
-    return SqlTemplate.forUpdate(getConnection(), sqlTemplate)
-      .execute(params)
-      .coAwait()
-      .rowCount()
   }
 
   override suspend fun update(t: TEntity): Int {
-    val tableName = getTableName()
-    val sqlTemplate = sqlTemplateMap[Pair(tableName, "update")] ?: run {
-      val idColumnName = getIdColumnName()
-      val columnsMap = getColumnMappings()
-      // Exclude 'id' from update fields
-      val fields = clazz.declaredFields.filter { it.name != idColumnName }
-      val setClause = fields.joinToString(", ") { "${columnsMap[it.name]} = #{${it.name}}" }
-      val sql = "UPDATE $tableName SET $setClause WHERE $idColumnName = #{id}"
-      sqlTemplateMap.plus(Pair(tableName, "update")) to sql
-      sql
+    try {
+      val sqlKey = "update"
+      val sqlTemplate = getOrCreateSql(tableName, sqlKey) {
+        val fields = clazz.declaredFields.filter { it.name != idFieldName }
+        val setClause = fields.joinToString(", ") { "${fieldMappings[it.name]} = #{${it.name}}" }
+        "UPDATE $tableName SET $setClause WHERE $idFieldName = #{id}"
+      }
+      val params = getNonNullFields(t) + mapOf("id" to idField.get(t))
+      logger.debug { "SQL: $sqlTemplate,  PARAMS: $params" }
+      return execute(sqlTemplate, params)
+    } catch (e: Exception) {
+      logger.error(e) { "Error updating entity: $t" }
+      throw Meta.repository(e.javaClass.simpleName, e.message)
     }
-    // Get id value
-    val idColumnName = getIdColumnName()
-    val idField = clazz.declaredFields.find { it.name == idColumnName }
-      ?: throw IllegalArgumentException("Class ${clazz.simpleName} must have an 'id' field for update operation.")
-    idField.isAccessible = true
-    val idValue = idField.get(t)
-    // Prepare parameters
-    val params = getNonNullFields(t) + mapOf("id" to idValue)
-    logger.debug { "SQL: $sqlTemplate,  PARAMS: $params" }
-    return SqlTemplate.forUpdate(getConnection(), sqlTemplate)
-      .execute(params)
-      .coAwait()
-      .rowCount()
   }
 
   override suspend fun update(id: TId, parameters: Map<String, Any?>): Int {
-    val tableName = getTableName()
-    val sqlTemplate = sqlTemplateMap[Pair(tableName, "update")] ?: run {
-      val idColumnName = getIdColumnName()
-      val columnsMap = getColumnMappings()
-      val setClause = parameters.keys.joinToString(", ") { "${columnsMap[it]} = #{$it}" }
-      val sql = "UPDATE $tableName SET $setClause WHERE $idColumnName = #{id}"
-      sqlTemplateMap.plus(Pair(tableName, "update")) to sql
-      sql
+    try {
+      val sqlKey = "update_$parameters"
+      val sqlTemplate = getOrCreateSql(tableName, sqlKey) {
+        val setClause = parameters.keys.joinToString(", ") { "${fieldMappings[it]} = #{$it}" }
+        "UPDATE $tableName SET $setClause WHERE $idFieldName = #{id}"
+      }
+      val params = parameters + mapOf("id" to id)
+      logger.debug { "SQL: $sqlTemplate,  PARAMS: $params" }
+      return execute(sqlTemplate, params)
+    } catch (e: Exception) {
+      logger.error(e) { "Error updating entity with id: $id" }
+      throw Meta.repository(e.javaClass.simpleName, e.message)
     }
-    val params = parameters + mapOf("id" to id)
-    logger.debug { "SQL: $sqlTemplate,  PARAMS: $params" }
-    return SqlTemplate.forUpdate(getConnection(), sqlTemplate)
-      .execute(params)
-      .coAwait()
-      .rowCount()
   }
 
   override suspend fun get(id: TId): TEntity? {
-    val tableName = getTableName()
-    val sqlTemplate = sqlTemplateMap[Pair(tableName, "get")] ?: run {
-      val idColumnName = getIdColumnName()
-      val columnsMap = getColumnMappings()
-      val columns = columnsMap.values.joinToString(", ")
-      val sql = "SELECT $columns FROM $tableName WHERE $idColumnName = #{id}"
-      (sqlTemplateMap as MutableMap)[Pair(tableName, "get")] = sql
-      sql
+    try {
+      val sqlKey = "get"
+      val sqlTemplate = getOrCreateSql(tableName, sqlKey) {
+        val columns = fieldMappings.values.joinToString(", ")
+        "SELECT $columns FROM $tableName WHERE $idFieldName = #{id}"
+      }
+      return get(sqlTemplate, mapOf("id" to id), clazz)
+    } catch (e: Exception) {
+      logger.error(e) { "Error getting entity with id: $id" }
+      throw Meta.repository(e.javaClass.simpleName, e.message)
     }
-    val params = mapOf("id" to id)
-    logger.debug { "SQL: $sqlTemplate,  PARAMS: $params" }
-    val rows = SqlTemplate
-      .forQuery(getConnection(), sqlTemplate)
-      .mapTo(Row::toJson)
-      .execute(params)
-      .coAwait()
-      .firstOrNull()
-    return rows?.let { JsonUtil.parseObject(it.toString(), clazz, true) }
   }
 
-  override suspend fun queryBuilder(): QueryWrapper<TEntity> {
-    return QueryWrapperImpl(clazz, getConnection())
+  override suspend fun getByField(field: String, value: Any): TEntity? {
+    try {
+      val sqlKey = "getByField_$field"
+      val sqlTemplate = getOrCreateSql(tableName, sqlKey) {
+        val columns = fieldMappings.values.joinToString(", ")
+        "SELECT $columns FROM $tableName WHERE $field = #{value}"
+      }
+      val params = mapOf("value" to value)
+      logger.debug { "SQL: $sqlTemplate,  PARAMS: $params" }
+      return get(sqlTemplate, params, clazz)
+    } catch (e: Exception) {
+      logger.error(e) { "Error getting entity by field: $field = $value" }
+      throw Meta.repository(e.javaClass.simpleName, e.message)
+    }
   }
 
-  override suspend fun queryBuilder(clazz: Class<*>): QueryWrapper<*> {
-    return QueryWrapperImpl(clazz, getConnection())
+  override suspend fun getByField(field: KProperty1<TEntity, *>, value: Any): TEntity? {
+    try {
+      val sqlKey = "getByField_${field.name}"
+      val sql = getOrCreateSql(tableName, sqlKey) {
+        val columns = fieldMappings.values.joinToString(", ")
+        "SELECT $columns FROM $tableName WHERE ${fieldMappings[field.name]} = #{value}"
+      }
+      val params = mapOf("value" to value)
+      logger.debug { "SQL: $sql,  PARAMS: $params" }
+      return get(sql, params, clazz)
+    } catch (e: Exception) {
+      logger.error(e) { "Error getting entity by field: ${field.name} = $value" }
+      throw Meta.repository(e.javaClass.simpleName, e.message)
+    }
   }
 
+  override suspend fun createBatch(list: List<TEntity>): Int {
+    try {
+      if (list.isEmpty()) return 0
+      var rowCount = 0
+      list.chunked(1000).forEach {
+        val sql = genBatchInsertSql(it)
+        rowCount += SqlTemplate.forUpdate(sqlClient, sql)
+          .execute(emptyMap())
+          .coAwait()
+          .rowCount()
+      }
+      return rowCount
+    } catch (e: Exception) {
+      logger.error(e) { "Error creating batch entities: $list" }
+      throw Meta.repository(e.javaClass.simpleName, e.message)
+    }
+  }
+
+  // base方法
+  suspend fun <R> get(sql: String, params: Map<String, Any?>, clazz: Class<*>): R? {
+    logger.debug { "SQL: $sql,  PARAMS: $params" }
+    val resultSet = SqlTemplate.forQuery(getConnection(), sql).execute(params).coAwait()
+    val list = resultSet.map { it.toJson() }
+    return when (list.size) {
+      0 -> null
+      1 -> JsonUtil.parseObject(list[0], clazz, true) as R
+      else -> throw IllegalStateException("Expected single result but got ${list.size}")
+    }
+  }
+
+  suspend fun <R> find(sql: String, params: Map<String, Any?>, clazz: Class<*>): R? {
+    logger.debug { "SQL: $sql,  PARAMS: $params" }
+    val resultSet = SqlTemplate.forQuery(getConnection(), sql).execute(params).coAwait()
+    val list = resultSet.map { it.toJson() }
+    val listType = TypeFactory.defaultInstance().constructCollectionType(List::class.java, clazz)
+    val listTypeReference = object : TypeReference<List<Any>>() {
+      override fun getType() = listType
+    }
+    return JsonUtil.parseArray(JsonUtil.toJsonArray(list), listTypeReference, true) as R
+  }
+
+  suspend fun execute(sql: String, params: Map<String, Any?> = emptyMap()): Int {
+    logger.debug { "SQL: $sql ,PARAMS: $params" }
+    return try {
+      SqlTemplate.forUpdate(getConnection(), sql)
+        .execute(params)
+        .coAwait()
+        .rowCount()
+    } catch (e: Exception) {
+      logger.error(e) { "Error executing SQL: $sql, PARAMS: $params" }
+      throw Meta.repository(e.javaClass.simpleName, e.message)
+    }
+  }
+
+  suspend fun queryBuilder(qClazz: Class<Any>? = null): QueryWrapper<TEntity> {
+    val qClass = qClazz ?: clazz
+    val connection = getConnection()
+    val queryWrapper = querySqlMap.getOrPut(qClass.simpleName) {
+      QueryWrapperImpl(qClass)
+    } as QueryWrapperImpl<TEntity>
+    queryWrapper.sqlClient = connection
+    return queryWrapper
+  }
+
+  // 其他工具方法
   private suspend fun getConnection(): SqlClient {
     return if (TxCtx.isTransactionActive(coroutineContext)) {
       TxCtx.currentSqlConnection(coroutineContext) ?: run {
@@ -164,55 +306,16 @@ open class RepositoryImpl<TId, TEntity : Any>(
     }
   }
 
-  // 其他工具方法
-  override suspend fun createBatch(list: List<TEntity>): Int {
-    if (list.isEmpty()) return 0
-    var rowCount = 0
-    list.chunked(1000).forEach {
-      val sql = genBatchInsertSql(it)
-      rowCount += SqlTemplate.forUpdate(sqlClient, sql)
-        .execute(emptyMap())
-        .coAwait()
-        .rowCount()
-    }
-    return rowCount
+  // 通用获取或创建 SQL 模板的方法
+  private fun getOrCreateSql(tableName: String, key: String, sqlProvider: () -> String): String {
+    val tableSqlMap = sqlMap.computeIfAbsent(tableName) { ConcurrentHashMap() }
+    return tableSqlMap.getOrPut(key, sqlProvider)
   }
 
-  // 工具方法：获取表名
-  private fun getTableName(): String {
-    return clazz.getAnnotation(Table::class.java)?.name?.takeIf { it.isNotBlank() }
-      ?: StrUtil.toUnderlineCase(clazz.simpleName)
-  }
-
-  // 添加获取ID字段名称的方法
-  private fun getIdColumnName(): String {
-    val idField = clazz.declaredFields.find { it.isAnnotationPresent(Id::class.java) }
-      ?: throw IllegalArgumentException("No @Id field found in ${clazz.simpleName}")
-    return idField.getAnnotation(Column::class.java)?.name?.takeIf { it.isNotBlank() }
-      ?: StrUtil.toUnderlineCase(idField.name)
-  }
-
-  private fun getColumnMappings(): Map<String, String> {
-    return clazz.declaredFields.associate { field ->
-      val columnAnnotation = field.getAnnotation(Column::class.java)
-      val columnName = columnAnnotation?.name?.takeIf { it.isNotBlank() }
-        ?: StrUtil.toUnderlineCase(field.name)
-      field.name to columnName
-    }
-  }
-
-  // 工具方法：获取非空字段及其值
+  // 获取非空字段及其值
   private fun getNonNullFields(t: TEntity): Map<String, Any> {
-    return clazz.declaredFields
-      .filter { field ->
-        field.isAccessible = true
-        // 排除被 @Transient 注解标记的字段
-        !field.isAnnotationPresent(Transient::class.java) &&
-          field.get(t) != null
-      }
-      .associate { field ->
-        field.name to field.get(t)
-      }
+    return fields.filter { !it.isAnnotationPresent(Transient::class.java) && it.get(t) != null }
+      .associate { it.name to it.get(t) }
   }
 
   /**
@@ -223,19 +326,15 @@ open class RepositoryImpl<TId, TEntity : Any>(
   private fun <TEntity> genBatchInsertSql(objects: List<TEntity>): String {
     // 如果对象列表为空，直接返回空字符串
     if (objects.isEmpty()) return ""
-
     // 将类名转换为下划线命名的表名，例如：UserInfo -> user_info
     val tableName = StrUtil.toUnderlineCase(clazz.simpleName)
-
     // 获取类的所有字段，包括私有字段
     val fields = clazz.declaredFields.filter {
       // 过滤掉静态字段和合成字段
       !Modifier.isStatic(it.modifiers) && !it.isSynthetic
     }
-
     // 确保所有字段可访问
     fields.forEach { it.isAccessible = true }
-
     // 将字段名转换为下划线命名的列名，并用逗号隔开
     val columnNames = fields.joinToString(", ") { StrUtil.toUnderlineCase(it.name) }
 
@@ -248,18 +347,14 @@ open class RepositoryImpl<TId, TEntity : Any>(
       is String -> "'${escapeSql(value)}'" // 字符串类型，加单引号并进行转义
       is Enum<*> -> "'${value.name}'" // 枚举类型，使用枚举名，添加单引号
       is Number, is Boolean -> value.toString() // 数字和布尔类型，直接转换为字符串
-      is Timestamp -> // 时间戳类型，格式化为指定的日期时间字符串
-        "'${formatter.format(value.toInstant().atZone(ZoneId.of("Asia/Shanghai")))}'"
-
+      is Timestamp -> // 时间戳类型
+        "'${OffsetDateTime.ofInstant(value.toInstant(), ZoneId.systemDefault())}'"
       is Array<*> -> // 数组类型处理
         if (value.isEmpty()) "'{}'" else "'{${value.joinToString(",") { escapeSql(it?.toString() ?: "NULL") }}}'"
-
       is Collection<*> -> // 集合类型处理
         if (value.isEmpty()) "'{}'" else "'{${value.joinToString(",") { escapeSql(it?.toString() ?: "NULL") }}}'"
-
       else -> "'${escapeSql(value.toString())}'" // 其他类型，调用 toString() 后转义并加单引号
     }
-
     // 构建 VALUES 部分，每个对象对应一组值
     val valuesList = objects.map { instance ->
       fields.joinToString(", ", "(", ")") { field ->
@@ -268,5 +363,13 @@ open class RepositoryImpl<TId, TEntity : Any>(
       }
     }
     return "INSERT INTO $tableName ($columnNames) VALUES ${valuesList.joinToString(", ")};"
+  }
+
+  fun isCollectionType(type: Type): Boolean {
+    return when (type) {
+      is Class<*> -> type.isArray || Collection::class.java.isAssignableFrom(type)
+      is ParameterizedType -> Collection::class.java.isAssignableFrom((type.rawType as Class<*>))
+      else -> false
+    }
   }
 }

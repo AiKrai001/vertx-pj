@@ -3,7 +3,7 @@ package org.aikrai.vertx.jackson
 import com.fasterxml.jackson.databind.PropertyName
 import com.fasterxml.jackson.databind.introspect.Annotated
 import com.fasterxml.jackson.databind.introspect.JacksonAnnotationIntrospector
-import jakarta.persistence.Column
+import org.aikrai.vertx.db.annotation.TableField
 
 class ColumnAnnotationIntrospector : JacksonAnnotationIntrospector() {
   override fun findNameForDeserialization(annotated: Annotated?): PropertyName? {
@@ -16,7 +16,7 @@ class ColumnAnnotationIntrospector : JacksonAnnotationIntrospector() {
 
   private fun getColumnName(annotated: Annotated?): PropertyName? {
     if (annotated == null) return null
-    val column = annotated.getAnnotation(Column::class.java)
-    return column?.let { PropertyName(it.name) }
+    val column = annotated.getAnnotation(TableField::class.java)
+    return column?.let { PropertyName(it.value) }
   }
 }

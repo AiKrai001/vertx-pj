@@ -1,5 +1,6 @@
 package app.config.auth
 
+import cn.hutool.core.lang.Snowflake
 import io.vertx.ext.web.RoutingContext
 import io.vertx.ext.web.handler.AuthenticationHandler
 import kotlinx.coroutines.CoroutineScope
@@ -7,40 +8,33 @@ import kotlinx.coroutines.launch
 import org.aikrai.vertx.utlis.Meta
 
 class JwtAuthenticationHandler(
-  private val coroutineScope: CoroutineScope,
-  private val authHandler: AuthHandler,
-  private val context: String,
+  val scope: CoroutineScope,
+  val tokenService: TokenService,
+  val context: String,
+  val snowflake: Snowflake
 ) : AuthenticationHandler {
-
-  var exclude = mutableListOf(
-    "/auth/**",
-  )
-
   override fun handle(event: RoutingContext) {
+    event.put("requestId", snowflake.nextId())
     val path = event.request().path().replace("$context/", "/").replace("//", "/")
-    if (isPathExcluded(path, exclude)) {
+    if (isPathExcluded(path, anonymous)) {
       event.next()
       return
     }
-
-    val authorization = event.request().getHeader("Authorization") ?: null
-    if (authorization == null || !authorization.startsWith("token ")) {
-      event.fail(401, Meta.unauthorized("无效Token"))
-      return
-    }
-
-    val token = authorization.substring(6)
-
-    coroutineScope.launch {
-      val authUser = authHandler.handle(token)
-      if (authUser != null) {
-        event.setUser(authUser)
+    scope.launch {
+      try {
+        val user = tokenService.getLoginUser(event)
+        tokenService.verifyToken(user)
+        event.setUser(user)
         event.next()
-      } else {
-        event.fail(401, Meta.unauthorized("token"))
+      } catch (e: Exception) {
+        event.fail(401, Meta.unauthorized(e.message ?: "token"))
       }
     }
   }
+
+  var anonymous = mutableListOf(
+    "/apidoc.json"
+  )
 
   private fun isPathExcluded(path: String, excludePatterns: List<String>): Boolean {
     for (pattern in excludePatterns) {

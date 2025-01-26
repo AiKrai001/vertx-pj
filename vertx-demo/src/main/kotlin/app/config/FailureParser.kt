@@ -1,4 +1,4 @@
-package org.aikrai.vertx.config
+package app.config
 
 import io.vertx.mysqlclient.MySQLException
 import io.vertx.pgclient.PgException
@@ -40,7 +40,7 @@ object FailureParser {
 
   fun parse(statusCode: Int, error: Throwable): Failure {
     return when (error) {
-      is SQLException -> Failure(statusCode, Meta.failure(error.javaClass.name, "执行错误"))
+      is SQLException -> Failure(statusCode, Meta.error(error.javaClass.name, "执行错误"))
       else -> Failure(statusCode, error.toMeta())
     }
   }

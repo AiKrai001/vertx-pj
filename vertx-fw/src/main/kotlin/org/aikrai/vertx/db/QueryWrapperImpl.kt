@@ -5,17 +5,40 @@ import io.vertx.kotlin.coroutines.coAwait
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.SqlClient
 import io.vertx.sqlclient.templates.SqlTemplate
-import jakarta.persistence.Column
-import jakarta.persistence.Table
+import mu.KotlinLogging
+import org.aikrai.vertx.db.annotation.TableField
+import org.aikrai.vertx.db.annotation.TableName
 import org.aikrai.vertx.jackson.JsonUtil
+import org.aikrai.vertx.utlis.Meta
+import java.lang.reflect.Field
+import java.lang.reflect.Modifier
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.reflect.KProperty1
-import kotlin.reflect.jvm.javaField
 
 class QueryWrapperImpl<T : Any>(
-  private val entityClass: Class<T>,
-  private val sqlClient: SqlClient,
+  private val clazz: Class<T>
 ) : QueryWrapper<T> {
-  private val conditions = mutableListOf<QueryCondition>()
+  var sqlClient: SqlClient? = null
+  private val logger = KotlinLogging.logger { }
+  private val conditions = CopyOnWriteArrayList<QueryCondition>()
+  private val sqlMap = ConcurrentHashMap<String, String>()
+
+  private val fields: List<Field> = clazz.declaredFields.filter {
+    !it.isAnnotationPresent(Transient::class.java) &&
+      !Modifier.isStatic(it.modifiers) &&
+      !it.isSynthetic
+  }.onEach { it.isAccessible = true }
+
+  private val fieldMappings: Map<String, String> = fields.associate { field ->
+    val fieldAnnotation = field.getAnnotation(TableField::class.java)
+    val fieldName = fieldAnnotation?.value?.takeIf { it.isNotBlank() }
+      ?: StrUtil.toUnderlineCase(field.name)
+    field.name to fieldName
+  }
+
+  private val tableName: String = clazz.getAnnotation(TableName::class.java)?.value?.takeIf { it.isNotBlank() }
+    ?: StrUtil.toUnderlineCase(clazz.simpleName)
 
   override fun select(vararg columns: String): QueryWrapper<T> {
     conditions.add(
@@ -29,12 +52,10 @@ class QueryWrapperImpl<T : Any>(
 
   override fun select(vararg columns: KProperty1<T, *>): QueryWrapper<T> {
     columns.forEach {
-      val columnName = it.javaField?.getAnnotation(Column::class.java)?.name?.takeIf { it.isNotBlank() }
-        ?: StrUtil.toUnderlineCase(it.name)
       conditions.add(
         QueryCondition(
           type = QueryType.SELECT,
-          column = columnName
+          column = fieldMappings[it.name] ?: it.name
         )
       )
     }
@@ -49,8 +70,8 @@ class QueryWrapperImpl<T : Any>(
     return eq(true, column, value)
   }
 
-  override fun eq(condition: Boolean, column: String, value: Any): QueryWrapper<T> {
-    if (condition) {
+  override fun eq(condition: Boolean, column: String, value: Any?): QueryWrapper<T> {
+    if (condition && value != null && value.toString().isNotBlank()) {
       conditions.add(
         QueryCondition(
           type = QueryType.WHERE,
@@ -63,14 +84,12 @@ class QueryWrapperImpl<T : Any>(
     return this
   }
 
-  override fun eq(condition: Boolean, column: KProperty1<T, *>, value: Any): QueryWrapper<T> {
-    if (condition) {
-      val columnName = column.javaField?.getAnnotation(Column::class.java)?.name?.takeIf { it.isNotBlank() }
-        ?: StrUtil.toUnderlineCase(column.name)
+  override fun eq(condition: Boolean, column: KProperty1<T, *>, value: Any?): QueryWrapper<T> {
+    if (condition && value != null && value.toString().isNotBlank()) {
       conditions.add(
         QueryCondition(
           type = QueryType.WHERE,
-          column = columnName,
+          column = fieldMappings[column.name] ?: column.name,
           operator = "=",
           value = value
         )
@@ -197,90 +216,135 @@ class QueryWrapperImpl<T : Any>(
   }
 
   private fun buildSql(): String {
-    val sqlBuilder = StringBuilder()
+    try {
+      val sqlBuilder = StringBuilder()
+      // SELECT 子句
+      sqlBuilder.append("SELECT ")
+      val selectCondition = conditions.find { it.type == QueryType.SELECT }
+      if (selectCondition != null) {
+        sqlBuilder.append(selectCondition.column)
+      } else {
+        fieldMappings.values.joinToString(",").let {
+          sqlBuilder.append(it)
+        }
+      }
 
-    // SELECT 子句
-    sqlBuilder.append("SELECT ")
-    val selectCondition = conditions.find { it.type == QueryType.SELECT }
-    if (selectCondition != null) {
-      sqlBuilder.append(selectCondition.column)
-    } else {
-      sqlBuilder.append("*")
-    }
+      // FROM 子句
+      val from = conditions.filter { it.type == QueryType.FROM }
+      if (from.isNotEmpty()) {
+        sqlBuilder.append(" FROM ${from.first().column}")
+      } else {
+        sqlBuilder.append(" FROM $tableName")
+      }
 
-    // FROM 子句
-    val from = conditions.filter { it.type == QueryType.FROM }
-    if (from.isNotEmpty()) {
-      sqlBuilder.append(" FROM ${from.first().column}")
-    } else {
-      entityClass.getAnnotation(Table::class.java)?.name?.let {
-        sqlBuilder.append(" FROM $it")
-      } ?: sqlBuilder.append(" FROM ${StrUtil.toUnderlineCase(entityClass.simpleName)}")
-    }
-
-    // WHERE 子句
-    val whereConditions = conditions.filter { it.type == QueryType.WHERE }
-    if (whereConditions.isNotEmpty()) {
-      sqlBuilder.append(" WHERE ")
-      sqlBuilder.append(
-        whereConditions.joinToString(" AND ") {
-          when (it.operator) {
-            "IN", "NOT IN" -> "${it.column} ${it.operator} (${(it.value as Collection<*>).joinToString(",")})"
-            "LIKE" -> "${it.column} ${it.operator} '${it.value}'"
-            else -> "${it.column} ${it.operator} '${it.value}'"
+      // WHERE 子句
+      val whereConditions = conditions.filter { it.type == QueryType.WHERE }
+      if (whereConditions.isNotEmpty()) {
+        sqlBuilder.append(" WHERE ")
+        sqlBuilder.append(
+          whereConditions.joinToString(" AND ") {
+            "${it.column} ${it.operator} #{${it.column}}"
           }
-        }
-      )
-    }
+        )
+      }
 
-    // GROUP BY 子句
-    conditions.find { it.type == QueryType.GROUP_BY }?.let {
-      sqlBuilder.append(" GROUP BY ${it.column}")
-    }
+      // GROUP BY 子句
+      conditions.find { it.type == QueryType.GROUP_BY }?.let {
+        sqlBuilder.append(" GROUP BY ${it.column}")
+      }
 
-    // HAVING 子句
-    conditions.find { it.type == QueryType.HAVING }?.let {
-      sqlBuilder.append(" HAVING ${it.column}")
-    }
+      // HAVING 子句
+      conditions.find { it.type == QueryType.HAVING }?.let {
+        sqlBuilder.append(" HAVING ${it.column}")
+      }
 
-    // ORDER BY 子句
-    val orderByConditions = conditions.filter { it.type == QueryType.ORDER_BY }
-    if (orderByConditions.isNotEmpty()) {
-      sqlBuilder.append(" ORDER BY ")
-      sqlBuilder.append(
-        orderByConditions.joinToString(", ") {
-          "${it.column} ${it.additional["direction"]}"
-        }
-      )
+      // ORDER BY 子句
+      val orderByConditions = conditions.filter { it.type == QueryType.ORDER_BY }
+      if (orderByConditions.isNotEmpty()) {
+        sqlBuilder.append(" ORDER BY ")
+        sqlBuilder.append(
+          orderByConditions.joinToString(", ") {
+            "${it.column} ${it.additional["direction"]}"
+          }
+        )
+      }
+      return sqlBuilder.toString()
+    } catch (e: Exception) {
+      throw Meta.repository(e.javaClass.simpleName, e.message + "SQL 构建失败")
     }
-
-    return sqlBuilder.toString()
   }
 
-  override fun genSql(): String {
-    return buildSql()
+  private fun buildParams(): Map<String, String> {
+    val params = mutableMapOf<String, String>()
+    conditions.filter { it.type == QueryType.WHERE }.forEach {
+      when (it.operator) {
+        "IN", "NOT IN" -> {
+          params[it.column] = "(${(it.value as Collection<*>).joinToString(",")})"
+        }
+        else -> {
+          params[it.column] = it.value.toString()
+        }
+      }
+    }
+    return params
+  }
+
+  override fun genSql(): Pair<String, Map<String, String>> {
+    return (buildSql() to buildParams()).also { conditions.clear() }
   }
 
   override suspend fun getList(): List<T> {
-    val sql = buildSql()
-    val objs = SqlTemplate
-      .forQuery(sqlClient, sql)
-      .mapTo(Row::toJson)
-      .execute(emptyMap())
-      .coAwait()
-      .toList()
-    return objs.map { JsonUtil.parseObject(it.encode(), entityClass) }
+    if (sqlClient == null) {
+      throw Meta.repository("SqlClientError", "SqlClient 未初始化")
+    }
+    try {
+      val cacheKey = generateCacheKey(tableName, conditions)
+      val sql = sqlMap.getOrPut(cacheKey) {
+        buildSql()
+      }
+      val params = buildParams()
+      logger.debug { "SQL: $sql ,PARAMS: $params" }
+      val objs = SqlTemplate
+        .forQuery(sqlClient, sql)
+        .mapTo(Row::toJson)
+        .execute(params)
+        .coAwait()
+        .toList()
+      return objs.map { JsonUtil.parseObject(it.encode(), clazz) }.also { conditions.clear() }
+    } catch (e: Exception) {
+      conditions.clear()
+      throw Meta.repository(e.javaClass.simpleName, e.message)
+    }
   }
 
   override suspend fun getOne(): T? {
-    val sql = buildSql()
-    val obj = SqlTemplate
-      .forQuery(sqlClient, sql)
-      .mapTo(Row::toJson)
-      .execute(emptyMap())
-      .coAwait()
-      .firstOrNull()
-    return obj?.let { JsonUtil.parseObject(it.encode(), entityClass) }
+    if (sqlClient == null) {
+      throw Meta.repository("SqlClientError", "SqlClient 未初始化")
+    }
+    try {
+      val cacheKey = generateCacheKey(tableName, conditions)
+      val sql = sqlMap.getOrPut(cacheKey) { buildSql() }
+      val params = buildParams()
+      logger.debug { "SQL: $sql ,PARAMS: $params" }
+      val resultSet = SqlTemplate.forQuery(sqlClient, sql).execute(params).coAwait()
+      val list = resultSet.map { it.toJson() }
+      return when (list.size) {
+        0 -> null
+        1 -> JsonUtil.parseObject(list[0], clazz, true)
+        else -> throw IllegalStateException("Expected single result but got ${list.size}")
+      }
+    } catch (e: Exception) {
+      conditions.clear()
+      throw Meta.repository(e.javaClass.simpleName, e.message)
+    }
+  }
+
+  private fun generateCacheKey(tableName: String, conditions: List<QueryCondition>): String {
+    val keyBuilder = StringBuilder(tableName)
+    conditions.forEach { condition ->
+      keyBuilder.append("|${condition.type}|${condition.column}|${condition.operator}")
+    }
+    return keyBuilder.toString()
   }
 }
 

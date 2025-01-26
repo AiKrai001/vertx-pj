@@ -1,4 +1,4 @@
-package app.verticle
+package app.port.aipfox
 
 import com.google.inject.Inject
 import com.google.inject.name.Named
@@ -7,7 +7,6 @@ import io.vertx.core.http.HttpMethod
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.client.WebClient
 import io.vertx.ext.web.client.WebClientOptions
-import io.vertx.kotlin.coroutines.CoroutineVerticle
 import mu.KotlinLogging
 import org.aikrai.vertx.openapi.OpenApiSpecGenerator
 
@@ -18,14 +17,10 @@ class ApifoxClient @Inject constructor(
   @Named("apifox.folderId") private val folderId: String,
   @Named("server.name") private val serverName: String,
   @Named("server.port") private val port: String
-) : CoroutineVerticle() {
+) {
   private val logger = KotlinLogging.logger { }
 
-  override suspend fun start() {
-    importOpenapi()
-  }
-
-  private fun importOpenapi() {
+  fun importOpenapi() {
     val openApiJsonStr = OpenApiSpecGenerator().genOpenApiSpecStr(serverName, "1.0", "http://127.0.0.1:$port/api")
     val options = WebClientOptions().setDefaultPort(443).setDefaultHost("api.apifox.com").setSsl(true)
     val client = WebClient.create(vertx, options)

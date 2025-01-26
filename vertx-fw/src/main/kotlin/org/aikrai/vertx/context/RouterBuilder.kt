@@ -9,6 +9,8 @@ import io.vertx.ext.web.RoutingContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.aikrai.vertx.auth.*
+import org.aikrai.vertx.config.resp.DefaultResponseHandler
+import org.aikrai.vertx.config.resp.ResponseHandlerInterface
 import org.aikrai.vertx.utlis.ClassUtil
 import org.aikrai.vertx.utlis.Meta
 import org.reflections.Reflections
@@ -23,7 +25,9 @@ import kotlin.reflect.jvm.javaType
 
 class RouterBuilder(
   private val coroutineScope: CoroutineScope,
-  private val router: Router
+  private val router: Router,
+  private val scanPath: String? = null,
+  private val responseHandler: ResponseHandlerInterface = DefaultResponseHandler()
 ) {
   var anonymousPaths = ArrayList<String>()
 
@@ -31,22 +35,18 @@ class RouterBuilder(
     // 缓存路由信息
     val routeInfoCache = mutableMapOf<Pair<String, HttpMethod>, RouteInfo>()
     // 获取所有 Controller 类中的公共方法
-    val packagePath = ClassUtil.getMainClass()?.packageName
+    val packagePath = scanPath ?: ClassUtil.getMainClass().packageName
     val controllerClassSet = Reflections(packagePath).getTypesAnnotatedWith(Controller::class.java)
     val controllerMethods = ClassUtil.getPublicMethods(controllerClassSet)
     for ((classType, methods) in controllerMethods) {
       val controllerAnnotation = classType.getDeclaredAnnotationsByType(Controller::class.java).firstOrNull()
       val prefixPath = controllerAnnotation?.prefix ?: ""
       val classAllowAnonymous = classType.getAnnotation(AllowAnonymous::class.java) != null
-      if (classAllowAnonymous) {
-        val classPath = getReqPath(prefixPath, classType)
-        anonymousPaths.add("$classPath/**".replace("//", "/"))
-      }
       for (method in methods) {
         val reqPath = getReqPath(prefixPath, classType, method)
         val httpMethod = getHttpMethod(method)
         val allowAnonymous = method.getAnnotation(AllowAnonymous::class.java) != null
-        if (allowAnonymous) anonymousPaths.add(reqPath)
+        if (classAllowAnonymous || allowAnonymous) anonymousPaths.add(reqPath)
         val customizeResp = method.getAnnotation(CustomizeResponse::class.java) != null
         val role = method.getAnnotation(CheckRole::class.java)
         val permissions = method.getAnnotation(CheckPermission::class.java)
@@ -72,6 +72,7 @@ class RouterBuilder(
               isNullable = parameter.type.isMarkedNullable,
               isList = parameter.type.classifier == List::class,
               isComplex = !parameter.type.classifier.toString().startsWith("class kotlin.") &&
+                  !parameter.type.classifier.toString().startsWith("class io.vertx") &&
                   !parameter.type.javaType.javaClass.isEnum &&
                   parameter.type.javaType is Class<*>
             )
@@ -103,18 +104,14 @@ class RouterBuilder(
     coroutineScope.launch {
       try {
         val params = getParamsInstance(ctx, routeInfo.parameterInfo)
-        val result = if (routeInfo.kFunction.isSuspend) {
+        val resObj = if (routeInfo.kFunction.isSuspend) {
           routeInfo.kFunction.callSuspend(instance, *params)
         } else {
           routeInfo.kFunction.call(instance, *params)
         }
-        val json = serializeToJson(result)
-        if (routeInfo.customizeResp) return@launch
-        ctx.response()
-          .putHeader("Content-Type", "application/json")
-          .end(json)
+        responseHandler.normal(ctx, resObj, routeInfo.customizeResp)
       } catch (e: Exception) {
-        handleError(ctx, e)
+        responseHandler.exception(ctx, e)
       }
     }
   }
@@ -176,13 +173,14 @@ class RouterBuilder(
     }
 
     private fun getReqPath(prefix: String, clazz: Class<*>, method: Method): String {
-      val basePath = if (prefix.isNotBlank()) {
+      var classPath = if (prefix.isNotBlank()) {
         StrUtil.toCamelCase(StrUtil.toUnderlineCase(prefix))
       } else {
         StrUtil.toCamelCase(StrUtil.toUnderlineCase(clazz.simpleName.removeSuffix("Controller")))
       }
+      if (classPath == "/") classPath = ""
       val methodName = StrUtil.toCamelCase(StrUtil.toUnderlineCase(method.name))
-      return "/$basePath/$methodName".replace("//", "/")
+      return "/$classPath/$methodName".replace("//", "/")
     }
 
     private fun getParamsInstance(ctx: RoutingContext, paramsInfo: List<ParameterInfo>): Array<Any?> {
@@ -299,27 +297,6 @@ class RouterBuilder(
      */
     private fun serializeToJson(obj: Any?): String {
       return objectMapper.writeValueAsString(obj)
-    }
-
-    /**
-     * 处理错误并通过标准化的错误响应发送。
-     *
-     * @param ctx 发送响应的 [RoutingContext]。
-     * @param e 捕获的异常。
-     */
-    private fun handleError(ctx: RoutingContext, e: Exception) {
-      ctx.response()
-        .setStatusCode(500)
-        .putHeader("Content-Type", "application/json")
-        .end(
-          objectMapper.writeValueAsString(
-            mapOf(
-              "name" to e::class.simpleName,
-              "message" to (e.message ?: e.cause.toString()),
-              "data" to null
-            )
-          )
-        )
     }
   }
 

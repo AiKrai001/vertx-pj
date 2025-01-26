@@ -9,8 +9,6 @@ import io.vertx.core.Vertx
 import io.vertx.core.http.HttpServer
 import io.vertx.core.http.HttpServerOptions
 import io.vertx.ext.auth.jwt.JWTAuth
-import io.vertx.mysqlclient.MySQLBuilder
-import io.vertx.mysqlclient.MySQLConnectOptions
 import io.vertx.pgclient.PgBuilder
 import io.vertx.pgclient.PgConnectOptions
 import io.vertx.sqlclient.Pool
@@ -22,8 +20,7 @@ import org.aikrai.vertx.config.DefaultScope
 import org.aikrai.vertx.db.tx.TxMgrHolder.initTxMgr
 
 object InjectConfig {
-  suspend fun configure(vertx: Vertx): Injector {
-    Config.init(vertx)
+  fun configure(vertx: Vertx): Injector {
     return Guice.createInjector(InjectorModule(vertx))
   }
 }
@@ -40,7 +37,6 @@ class InjectorModule(
     }
     bind(Vertx::class.java).toInstance(vertx)
     bind(CoroutineScope::class.java).toInstance(coroutineScope)
-    bind(HttpServer::class.java).toInstance(vertx.createHttpServer(HttpServerOptions()))
     bind(Snowflake::class.java).toInstance(IdUtil.getSnowflake())
     bind(JWTAuth::class.java).toProvider(JWTAuthProvider::class.java).`in`(Singleton::class.java)
 
@@ -57,7 +53,6 @@ class InjectorModule(
 //    val user = configMap["databases.username"].toString()
 //    val password = configMap["databases.password"].toString()
 //    val dbMap = Config.getKey("databases") as Map<String, String>
-    val type = Config.getKey("databases.type").toString()
     val name = Config.getKey("databases.name").toString()
     val host = Config.getKey("databases.host").toString()
     val port = Config.getKey("databases.port").toString()
@@ -65,29 +60,13 @@ class InjectorModule(
     val password = Config.getKey("databases.password").toString()
 
     val poolOptions = PoolOptions().setMaxSize(10)
-    val pool = when (type.lowercase()) {
-      "mysql" -> {
-        val clientOptions = MySQLConnectOptions()
-          .setHost(host)
-          .setPort(port.toInt())
-          .setDatabase(name)
-          .setUser(user)
-          .setPassword(password)
-          .setTcpKeepAlive(true)
-        MySQLBuilder.pool().connectingTo(clientOptions).with(poolOptions).using(vertx).build()
-      }
-      "postgre", "postgresql" -> {
-        val clientOptions = PgConnectOptions()
-          .setHost(host)
-          .setPort(port.toInt())
-          .setDatabase(name)
-          .setUser(user)
-          .setPassword(password)
-          .setTcpKeepAlive(true)
-        PgBuilder.pool().connectingTo(clientOptions).with(poolOptions).using(vertx).build()
-      }
-      else -> throw IllegalArgumentException("Unsupported database type: $type")
-    }
-    return pool
+    val clientOptions = PgConnectOptions()
+      .setHost(host)
+      .setPort(port.toInt())
+      .setDatabase(name)
+      .setUser(user)
+      .setPassword(password)
+      .setTcpKeepAlive(true)
+    return PgBuilder.pool().connectingTo(clientOptions).with(poolOptions).using(vertx).build()
   }
 }

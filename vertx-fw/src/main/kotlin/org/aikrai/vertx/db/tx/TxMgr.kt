@@ -22,7 +22,7 @@ object TxMgrHolder {
   private val _txMgr = AtomicReference<TxMgr?>(null)
 
   val txMgr: TxMgr
-    get() = _txMgr.get() ?: throw Meta.failure(
+    get() = _txMgr.get() ?: throw Meta.error(
       "TransactionError",
       "TxMgr(TransactionManager)尚未初始化,请先调用initTxMgr()"
     )

@@ -55,21 +55,19 @@ spotless {
 }
 
 dependencies {
+//  implementation("org.jetbrains.kotlin:kotlin-reflect:1.9.20")
   implementation("io.vertx:vertx-lang-kotlin-coroutines:$vertxVersion")
   implementation("io.vertx:vertx-core:$vertxVersion")
   implementation("io.vertx:vertx-web:$vertxVersion")
   implementation("io.vertx:vertx-config:$vertxVersion")
   implementation("io.vertx:vertx-config-yaml:$vertxVersion")
-  implementation("io.vertx:vertx-pg-client:$vertxVersion")
-  implementation("io.vertx:vertx-mysql-client:$vertxVersion")
   implementation("io.vertx:vertx-sql-client-templates:$vertxVersion")
   implementation("io.vertx:vertx-auth-jwt:$vertxVersion")
 
   implementation("com.google.inject:guice:7.0.0")
-  implementation("org.reflections:reflections:0.9.12")
+  implementation("org.reflections:reflections:0.10.2")
   implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
   implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2")
-  implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.15.2")
 
   // hutool
   implementation("cn.hutool:hutool-core:5.8.35")
@@ -79,10 +77,6 @@ dependencies {
   implementation("org.slf4j:slf4j-api:2.0.6")
   implementation("ch.qos.logback:logback-classic:1.4.14")
   implementation("org.codehaus.janino:janino:3.1.8")
-
-  // jpa
-  implementation("jakarta.persistence:jakarta.persistence-api:3.2.0")
-  implementation("jakarta.validation:jakarta.validation-api:3.1.0")
 
   // doc
   implementation("io.swagger.core.v3:swagger-core:2.2.27")

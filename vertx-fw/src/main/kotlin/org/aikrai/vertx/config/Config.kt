@@ -31,7 +31,22 @@ object Config {
       configMap[key]
     } else {
       // 找到所有以 key 开头的条目
-      configMap.filterKeys { it.startsWith(key) }
+      val map = configMap.filterKeys { it.startsWith(key) }
+      // 如果没有找到任何匹配的条目，返回 null
+      return map.ifEmpty { null }
+    }
+  }
+
+  fun getKeyAsString(key: String): String? {
+    if (retriever.get() == null) throw IllegalStateException("Config not initialized")
+    // 检查 configMap 中是否存在指定的 key
+    return if (configMap.containsKey(key)) {
+      configMap[key].toString()
+    } else {
+      // 找到所有以 key 开头的条目
+      val map = configMap.filterKeys { it.startsWith(key) }
+      // 如果没有找到任何匹配的条目，返回 null
+      if (map.isEmpty()) return null else map.toString()
     }
   }
 

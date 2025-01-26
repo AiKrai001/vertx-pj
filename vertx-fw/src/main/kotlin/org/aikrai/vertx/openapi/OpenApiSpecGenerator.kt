@@ -194,10 +194,11 @@ class OpenApiSpecGenerator {
    * @return 格式化后的 API 路径
    */
   private fun buildPath(controllerPrefix: String, methodName: String): String {
-    return (
-      "/${StrUtil.lowerFirst(StrUtil.toCamelCase(controllerPrefix))}/" +
-        StrUtil.lowerFirst(StrUtil.toCamelCase(methodName))
-      ).replace("//", "/")
+    val classPath = if (controllerPrefix != "/") {
+      StrUtil.toCamelCase(StrUtil.toUnderlineCase(controllerPrefix))
+    } else ""
+    val methodPath = StrUtil.toCamelCase(StrUtil.toUnderlineCase(methodName))
+    return "/$classPath/$methodPath".replace("//", "/")
   }
 
   /**
@@ -274,7 +275,7 @@ class OpenApiSpecGenerator {
     val type =
       (parameter.type.javaType as? Class<*>) ?: (parameter.type.javaType as? ParameterizedType)?.rawType as? Class<*>
         ?: return null
-
+    if (type.packageName.startsWith("io.vertx")) return null
     val paramName = parameter.name ?: return null
     val annotation = parameter.annotations.filterIsInstance<D>().firstOrNull()
 

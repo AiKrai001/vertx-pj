@@ -8,8 +8,8 @@ interface QueryWrapper<T> {
 
   fun eq(column: String, value: Any): QueryWrapper<T>
   fun eq(column: KProperty1<T, *>, value: Any): QueryWrapper<T>
-  fun eq(condition: Boolean, column: String, value: Any): QueryWrapper<T>
-  fun eq(condition: Boolean, column: KProperty1<T, *>, value: Any): QueryWrapper<T>
+  fun eq(condition: Boolean = true, column: String, value: Any?): QueryWrapper<T>
+  fun eq(condition: Boolean = true, column: KProperty1<T, *>, value: Any?): QueryWrapper<T>
 
   fun from(table: String): QueryWrapper<T>
 
@@ -33,7 +33,7 @@ interface QueryWrapper<T> {
   fun orderByAsc(vararg columns: KProperty1<T, *>): QueryWrapper<T>
   fun orderByDesc(vararg columns: KProperty1<T, *>): QueryWrapper<T>
 
-  fun genSql(): String
+  fun genSql(): Pair<String, Map<String, String>>
   suspend fun getList(): List<T>
   suspend fun getOne(): T?
 }

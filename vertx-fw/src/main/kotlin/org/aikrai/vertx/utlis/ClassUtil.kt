@@ -17,7 +17,7 @@ object ClassUtil {
    *
    * @return 主类的 Class 对象，如果未找到则返回 null
    */
-  fun getMainClass(): Class<*>? {
+  fun getMainClass(): Class<*> {
     val classLoader = ServiceLoader.load(ClassLoader::class.java).firstOrNull()
       ?: Thread.currentThread().contextClassLoader
     val mainCommand = System.getProperty("sun.java.command")
@@ -47,11 +47,11 @@ object ClassUtil {
           classLoader.loadClass(mainClassName)
         } catch (e: ClassNotFoundException) {
           e.printStackTrace()
-          null
+          throw Meta.error("MainClassNotFound", "获取启动类失败")
         }
       }
     }
-    return null
+    throw Meta.error("MainClassNotFound", "获取启动类失败")
   }
 
   /**

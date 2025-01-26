@@ -1,7 +1,5 @@
 server:
    name: vtx_demo
-   active: dev
-   port: 8080
    context: api # 上下文
    timeout: 120 # eventbus超时时间
    http:
@@ -15,8 +13,3 @@ server:
       timeout: 10000 # 毫秒
 jwt:
   key: 123456sdfjasdfjl # jwt加密key
-
-apifox:
-   token: APS-xxx
-   projectId: xxx
-   folderId: xxx

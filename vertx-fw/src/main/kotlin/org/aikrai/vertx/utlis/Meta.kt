@@ -6,43 +6,46 @@ import org.aikrai.vertx.jackson.JsonUtil
 @JsonIgnoreProperties("localizedMessage", "suppressed", "stackTrace", "cause")
 class Meta(
   val name: String,
-  override val message: String = "",
+  override val message: String = "Internal Server Error",
   val data: Any? = null
-) : RuntimeException(message, null, false, false) {
+) : RuntimeException(message, null, true, false) {
 
   fun stackTraceToString(): String {
     return JsonUtil.toJsonStr(this)
   }
 
   companion object {
-    fun failure(name: String, message: String): Meta =
+    fun error(name: String, message: String): Meta =
       Meta(name, message)
 
     fun unimplemented(message: String): Meta =
-      Meta("unimplemented", message)
+      Meta("Unimplemented", message)
 
     fun unauthorized(message: String): Meta =
-      Meta("unauthorized", message)
+      Meta("Unauthorized", message)
 
     fun timeout(message: String): Meta =
-      Meta("timeout", message)
+      Meta("Timeout", message)
 
     fun requireArgument(argument: String, message: String): Meta =
-      Meta("required_argument:$argument", message)
+      Meta("RequiredArgument:$argument", message)
 
     fun invalidArgument(argument: String, message: String): Meta =
-      Meta("invalid_argument:$argument", message)
+      Meta("InvalidArgument:$argument", message)
 
     fun notFound(argument: String, message: String): Meta =
-      Meta("not_found:$argument", message)
+      Meta("NotFound:$argument", message)
 
     fun badRequest(message: String): Meta =
-      Meta("bad_request", message)
+      Meta("BadRequest", message)
 
     fun notSupported(message: String): Meta =
-      Meta("not_supported", message)
+      Meta("NotSupported", message)
 
     fun forbidden(message: String): Meta =
-      Meta("forbidden", message)
+      Meta("Forbidden", message)
+
+    fun repository(name: String, message: String?): Meta =
+      Meta("Repository:$name", message ?: "")
   }
 }

@@ -9,6 +9,7 @@ group = "com.demo"
 version = "1.0.0-SNAPSHOT"
 
 val vertxVersion = "4.5.11"
+val junitJupiterVersion = "5.9.1"
 
 application {
   mainClass.set("app.Application")
@@ -68,11 +69,12 @@ spotless {
 }
 
 dependencies {
+  implementation(fileTree(mapOf("dir" to "lib", "include" to listOf("*.jar"))))
   implementation(project(":vertx-fw"))
   //  implementation("org.jetbrains.kotlin:kotlin-reflect:1.9.20")
-//  implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.20")
 //    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
   implementation(platform("io.vertx:vertx-stack-depchain:$vertxVersion"))
+  implementation(kotlin("stdlib-jdk8"))
   implementation("io.vertx:vertx-lang-kotlin:$vertxVersion")
   implementation("io.vertx:vertx-lang-kotlin-coroutines:$vertxVersion")
   implementation("io.vertx:vertx-core:$vertxVersion")
@@ -84,13 +86,14 @@ dependencies {
   implementation("io.vertx:vertx-mysql-client:$vertxVersion")
   implementation("io.vertx:vertx-sql-client-templates:$vertxVersion")
   implementation("io.vertx:vertx-auth-jwt:$vertxVersion")
+  implementation("io.vertx:vertx-redis-client:$vertxVersion")
+
 
   implementation("com.google.inject:guice:5.1.0")
-  implementation("org.reflections:reflections:0.9.12")
+  implementation("org.reflections:reflections:0.10.2")
   implementation("cn.hutool:hutool-all:5.8.24")
   implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
   implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2")
-  implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.15.2")
 //  implementation("com.github.ben-manes.caffeine:caffeine:3.1.8")
   implementation("dev.hsbrysk:caffeine-coroutines:1.0.0")
 
@@ -101,15 +104,18 @@ dependencies {
   implementation("org.codehaus.janino:janino:3.1.8")
 
   // jpa
-  implementation("jakarta.persistence:jakarta.persistence-api:3.2.0")
-  implementation("jakarta.validation:jakarta.validation-api:3.1.0")
+//  implementation("jakarta.persistence:jakarta.persistence-api:3.2.0")
+//  implementation("jakarta.validation:jakarta.validation-api:3.1.0")
 
-//  implementation("com.mysql:mysql-connector-j:9.1.0")
-  implementation("mysql:mysql-connector-java:5.1.49")
+  // db
+  implementation("org.postgresql:postgresql:42.7.5")
+  implementation("com.ongres.scram:client:2.1")
+
   // doc
   implementation("io.swagger.core.v3:swagger-core:2.2.27")
 
-  testImplementation("io.vertx:vertx-junit5:$vertxVersion")
-
-  implementation(fileTree(mapOf("dir" to "lib", "include" to listOf("*.jar"))))
+  testImplementation("io.vertx:vertx-junit5")
+  testImplementation("org.junit.jupiter:junit-jupiter:$junitJupiterVersion")
+  testImplementation("org.mockito:mockito-core:5.15.2")
+  testImplementation("org.mockito:mockito-junit-jupiter:5.15.2")
 }

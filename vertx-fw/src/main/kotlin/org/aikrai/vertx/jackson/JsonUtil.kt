@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.introspect.AnnotationIntrospectorPair
 import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 
@@ -24,7 +25,7 @@ object JsonUtil {
   private var objectMapperSnakeCase = createObjectMapperSnakeCase(false)
 
   private val objectMapperDeserialization = run {
-    val mapper: ObjectMapper = jacksonObjectMapper()
+    val mapper: ObjectMapper = jacksonObjectMapper().registerKotlinModule()
     mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
     mapper.registerModule(JavaTimeModule())
     mapper.setAnnotationIntrospector(
@@ -34,7 +35,7 @@ object JsonUtil {
   }
 
   private val objectMapperSnakeCaseDeserialization = run {
-    val mapper: ObjectMapper = jacksonObjectMapper()
+    val mapper: ObjectMapper = jacksonObjectMapper().registerKotlinModule()
     mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
     mapper.propertyNamingStrategy = PropertyNamingStrategies.SNAKE_CASE
     mapper.registerModule(JavaTimeModule())
@@ -116,7 +117,7 @@ private class CustomTypeResolverBuilder : ObjectMapper.DefaultTypeResolverBuilde
 }
 
 private fun createObjectMapper(writeClassName: Boolean): ObjectMapper {
-  val mapper: ObjectMapper = jacksonObjectMapper()
+  val mapper: ObjectMapper = jacksonObjectMapper().registerKotlinModule()
   mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
   mapper.registerModule(JavaTimeModule())
   if (writeClassName) {
@@ -130,7 +131,7 @@ private fun createObjectMapper(writeClassName: Boolean): ObjectMapper {
 }
 
 private fun createObjectMapperSnakeCase(writeClassName: Boolean): ObjectMapper {
-  val mapper: ObjectMapper = jacksonObjectMapper()
+  val mapper: ObjectMapper = jacksonObjectMapper().registerKotlinModule()
   mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
   mapper.propertyNamingStrategy = PropertyNamingStrategies.SNAKE_CASE
   mapper.registerModule(JavaTimeModule())

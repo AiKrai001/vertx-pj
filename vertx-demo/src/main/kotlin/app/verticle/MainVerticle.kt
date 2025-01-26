@@ -6,14 +6,12 @@ import mu.KotlinLogging
 
 class MainVerticle @Inject constructor(
   private val webVerticle: WebVerticle,
-  private val apifoxClient: ApifoxClient
 ) : CoroutineVerticle() {
   private val logger = KotlinLogging.logger { }
 
   override suspend fun start() {
     val verticles = listOf(
       webVerticle,
-      apifoxClient
     )
 
     for (verticle in verticles) {
