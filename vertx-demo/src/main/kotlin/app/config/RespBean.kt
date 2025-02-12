@@ -37,7 +37,7 @@ data class RespBean(
     }
 
     fun failure(code: Int, message: String, data: Any? = null): RespBean {
-      return RespBean(HttpStatus.ERROR, message, data)
+      return RespBean(code, message, data)
     }
 
 

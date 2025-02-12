@@ -26,7 +26,7 @@ class JwtAuthenticationHandler(
         tokenService.verifyToken(user)
         event.setUser(user)
         event.next()
-      } catch (e: Exception) {
+      } catch (e: Throwable) {
         event.fail(401, Meta.unauthorized(e.message ?: "token"))
       }
     }

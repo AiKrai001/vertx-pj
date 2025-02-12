@@ -23,7 +23,7 @@ class DefaultResponseHandler: ResponseHandlerInterface {
       .end(resStr)
   }
 
-  override suspend fun exception(ctx: RoutingContext, e: Exception) {
+  override suspend fun exception(ctx: RoutingContext, e: Throwable) {
     logger.error { "${ctx.request().uri()}: ${ctx.failure().stackTraceToString()}" }
     val failure = ctx.failure()
     if (failure == null) {

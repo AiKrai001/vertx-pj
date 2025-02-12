@@ -1,44 +1,26 @@
 package org.aikrai.vertx.db
 
-import cn.hutool.core.util.StrUtil
 import io.vertx.kotlin.coroutines.coAwait
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.SqlClient
 import io.vertx.sqlclient.templates.SqlTemplate
 import mu.KotlinLogging
-import org.aikrai.vertx.db.annotation.TableField
-import org.aikrai.vertx.db.annotation.TableName
 import org.aikrai.vertx.jackson.JsonUtil
 import org.aikrai.vertx.utlis.Meta
-import java.lang.reflect.Field
-import java.lang.reflect.Modifier
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.reflect.KProperty1
 
 class QueryWrapperImpl<T : Any>(
-  private val clazz: Class<T>
+  private val clazz: Class<T>,
+  private val tableName: String,
+  private val fieldMappings: Map<String, String>,
 ) : QueryWrapper<T> {
   var sqlClient: SqlClient? = null
+
   private val logger = KotlinLogging.logger { }
   private val conditions = CopyOnWriteArrayList<QueryCondition>()
   private val sqlMap = ConcurrentHashMap<String, String>()
-
-  private val fields: List<Field> = clazz.declaredFields.filter {
-    !it.isAnnotationPresent(Transient::class.java) &&
-      !Modifier.isStatic(it.modifiers) &&
-      !it.isSynthetic
-  }.onEach { it.isAccessible = true }
-
-  private val fieldMappings: Map<String, String> = fields.associate { field ->
-    val fieldAnnotation = field.getAnnotation(TableField::class.java)
-    val fieldName = fieldAnnotation?.value?.takeIf { it.isNotBlank() }
-      ?: StrUtil.toUnderlineCase(field.name)
-    field.name to fieldName
-  }
-
-  private val tableName: String = clazz.getAnnotation(TableName::class.java)?.value?.takeIf { it.isNotBlank() }
-    ?: StrUtil.toUnderlineCase(clazz.simpleName)
 
   override fun select(vararg columns: String): QueryWrapper<T> {
     conditions.add(

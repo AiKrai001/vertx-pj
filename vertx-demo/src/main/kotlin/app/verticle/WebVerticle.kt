@@ -64,9 +64,9 @@ class WebVerticle @Inject constructor(
     rootRouter.route("/api" + "*").subRouter(router)
     router.route()
       .handler(corsHandler)
-      .failureHandler(errorHandler)
       .handler(BodyHandler.create())
       .handler(logHandler)
+      .failureHandler(errorHandler)
 
     val authHandler = JwtAuthenticationHandler(coroutineScope, tokenService, context, snowflake)
     router.route("/*").handler(authHandler)
@@ -92,13 +92,13 @@ class WebVerticle @Inject constructor(
     if (failure != null) {
       logger.error { "${ctx.request().uri()}: ${failure.stackTraceToString()}" }
       val resObj = when (failure) {
-        is Meta -> RespBean.failure("${failure.name}:${failure.message}", failure.data)
+        is Meta -> RespBean.failure(ctx.statusCode(),"${failure.name}:${failure.message}", failure.data)
         else -> RespBean.failure("${failure.javaClass.simpleName}${if (failure.message != null) ":${failure.message}" else ""}")
       }
       val resStr = JsonUtil.toJsonStr(resObj)
       ctx.put("responseData", resStr)
       ctx.response()
-        .setStatusCode(if (ctx.statusCode() != 200) ctx.statusCode() else 500)
+        .setStatusCode(ctx.statusCode())
         .putHeader(HttpHeaders.CONTENT_TYPE, "application/json; charset=utf-8")
         .end(resStr)
     } else {

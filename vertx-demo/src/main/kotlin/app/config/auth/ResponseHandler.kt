@@ -48,7 +48,7 @@ class ResponseHandler: ResponseHandlerInterface {
   }
 
   // 业务异常处理
-  override suspend fun exception(ctx: RoutingContext, e: Exception) {
+  override suspend fun exception(ctx: RoutingContext, e: Throwable) {
     logger.error { "${ctx.request().uri()}: ${e.stackTraceToString()}" }
     val resObj = when(e) {
       is Meta -> {

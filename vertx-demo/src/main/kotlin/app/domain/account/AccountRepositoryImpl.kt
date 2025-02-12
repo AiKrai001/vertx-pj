@@ -3,11 +3,9 @@ package app.domain.account
 import app.base.domain.auth.modle.AccountRoleDTO
 import app.domain.account.modle.AccountRoleAccessDTO
 import com.google.inject.Inject
-import com.google.inject.Singleton
 import io.vertx.sqlclient.SqlClient
 import org.aikrai.vertx.db.RepositoryImpl
 
-@Singleton
 class AccountRepositoryImpl @Inject constructor(
   sqlClient: SqlClient
 ) : RepositoryImpl<Long, Account>(sqlClient), AccountRepository {

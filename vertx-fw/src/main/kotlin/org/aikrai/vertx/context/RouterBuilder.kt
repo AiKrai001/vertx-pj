@@ -110,7 +110,7 @@ class RouterBuilder(
           routeInfo.kFunction.call(instance, *params)
         }
         responseHandler.normal(ctx, resObj, routeInfo.customizeResp)
-      } catch (e: Exception) {
+      } catch (e: Throwable) {
         responseHandler.exception(ctx, e)
       }
     }

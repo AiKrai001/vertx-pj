@@ -28,35 +28,65 @@ import kotlin.reflect.KProperty1
 open class RepositoryImpl<TId, TEntity : Any>(
   private val sqlClient: SqlClient
 ) : Repository<TId, TEntity> {
+  companion object {
+    // classInfoCache
+    private val fieldsCache = ConcurrentHashMap<String, List<Field>>()
+    private val fieldMappingCache = ConcurrentHashMap<String, Map<String, String>>()
+    private val idFieldCache = ConcurrentHashMap<String, Field>()
+    private val idFieldNameCache = ConcurrentHashMap<String, String>()
+    private val tableNameCache = ConcurrentHashMap<String, String>()
+    // sqlCache
+    private val baseSqlCache = ConcurrentHashMap<String, ConcurrentHashMap<String, String>>()
+    private val queryClientCache = ConcurrentHashMap<String, Any>()
+  }
+
   private val logger = KotlinLogging.logger {}
   private val clazz: Class<TEntity> = (this::class.java.genericSuperclass as ParameterizedType)
     .actualTypeArguments[1] as Class<TEntity>
-  private val sqlMap = ConcurrentHashMap<String, ConcurrentHashMap<String, String>>()
-  private val querySqlMap = ConcurrentHashMap<String, Any>()
 
   // 缓存字段和映射
-  private val fields: List<Field> = clazz.declaredFields.filter {
-    !Modifier.isStatic(it.modifiers) &&
-      !it.isSynthetic &&
-      !it.isAnnotationPresent(Transient::class.java)
-  }.onEach { it.isAccessible = true }
-
-  private val fieldMappings: Map<String, String> = fields.associate { field ->
-    val fieldAnnotation = field.getAnnotation(TableField::class.java)
-    val fieldName = fieldAnnotation?.value?.takeIf { it.isNotBlank() }
-      ?: StrUtil.toUnderlineCase(field.name)
-    field.name to fieldName
+  private val fields: List<Field> by lazy {
+    fieldsCache.getOrPut(clazz.simpleName) {
+      clazz.declaredFields.filter {
+        !Modifier.isStatic(it.modifiers) &&
+            !it.isSynthetic &&
+            !it.isAnnotationPresent(Transient::class.java)
+      }.onEach { it.isAccessible = true }
+    }
   }
 
-  private val idField: Field =
-    clazz.declaredFields.find { it.isAnnotationPresent(TableId::class.java) }?.also { it.isAccessible = true }
-      ?: throw IllegalArgumentException("No @Id field found in ${clazz.simpleName}")
+  private val fieldMappings: Map<String, String> by lazy {
+    fieldMappingCache.getOrPut(clazz.simpleName) {
+      fields.associate { field ->
+        val fieldAnnotation = field.getAnnotation(TableField::class.java)
+        val fieldName = fieldAnnotation?.value?.takeIf { it.isNotBlank() }
+          ?: StrUtil.toUnderlineCase(field.name)
+        field.name to fieldName
+      }
+    }
+  }
 
-  private val idFieldName: String = idField.getAnnotation(TableField::class.java)?.value?.takeIf { it.isNotBlank() }
-    ?: StrUtil.toUnderlineCase(idField.name)
+  private val idField: Field by lazy {
+    idFieldCache.getOrPut(clazz.simpleName) {
+      clazz.declaredFields.find { it.isAnnotationPresent(TableId::class.java) }
+        ?.also { it.isAccessible = true }
+        ?: throw IllegalArgumentException("No @Id field in ${clazz.simpleName}")
+    }
+  }
 
-  private val tableName: String = clazz.getAnnotation(TableName::class.java)?.value?.takeIf { it.isNotBlank() }
-    ?: StrUtil.toUnderlineCase(clazz.simpleName)
+  private val idFieldName: String by lazy {
+    idFieldNameCache.getOrPut(clazz.simpleName) {
+      idField.getAnnotation(TableField::class.java)?.value?.takeIf { it.isNotBlank() }
+        ?: StrUtil.toUnderlineCase(idField.name)
+    }
+  }
+
+  private val tableName: String by lazy {
+    tableNameCache.getOrPut(clazz.simpleName) {
+      clazz.getAnnotation(TableName::class.java)?.value?.takeIf { it.isNotBlank() }
+        ?: StrUtil.toUnderlineCase(clazz.simpleName)
+    }
+  }
 
   override suspend fun create(t: TEntity): Int {
     try {
@@ -287,8 +317,8 @@ open class RepositoryImpl<TId, TEntity : Any>(
   suspend fun queryBuilder(qClazz: Class<Any>? = null): QueryWrapper<TEntity> {
     val qClass = qClazz ?: clazz
     val connection = getConnection()
-    val queryWrapper = querySqlMap.getOrPut(qClass.simpleName) {
-      QueryWrapperImpl(qClass)
+    val queryWrapper = queryClientCache.getOrPut(qClass.simpleName) {
+      QueryWrapperImpl(qClass, tableName, fieldMappings)
     } as QueryWrapperImpl<TEntity>
     queryWrapper.sqlClient = connection
     return queryWrapper
@@ -308,7 +338,7 @@ open class RepositoryImpl<TId, TEntity : Any>(
 
   // 通用获取或创建 SQL 模板的方法
   private fun getOrCreateSql(tableName: String, key: String, sqlProvider: () -> String): String {
-    val tableSqlMap = sqlMap.computeIfAbsent(tableName) { ConcurrentHashMap() }
+    val tableSqlMap = baseSqlCache.getOrPut(tableName) { ConcurrentHashMap() }
     return tableSqlMap.getOrPut(key, sqlProvider)
   }
 
