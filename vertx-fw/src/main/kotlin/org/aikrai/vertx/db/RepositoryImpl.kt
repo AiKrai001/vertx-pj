@@ -9,7 +9,7 @@ import io.vertx.sqlclient.*
 import io.vertx.sqlclient.templates.SqlTemplate
 import mu.KotlinLogging
 import org.aikrai.vertx.db.annotation.*
-import org.aikrai.vertx.db.tx.TxCtx
+import org.aikrai.vertx.db.tx.TxCtxElem
 import org.aikrai.vertx.jackson.JsonUtil
 import org.aikrai.vertx.utlis.Meta
 import java.lang.reflect.Field
@@ -171,9 +171,6 @@ open class RepositoryImpl<TId, TEntity : Any>(
         "DELETE FROM $tableName WHERE $idFieldName = #{id}"
       }
       val params = mapOf("id" to id)
-      if (logger.isDebugEnabled) {
-        logger.debug { "SQL: $sqlTemplate, PARAMS: $params" }
-      }
       return execute(sqlTemplate, params)
     } catch (e: Exception) {
       logger.error(e) { "Error deleting entity with id: $id" }
@@ -190,7 +187,6 @@ open class RepositoryImpl<TId, TEntity : Any>(
         "UPDATE $tableName SET $setClause WHERE $idFieldName = #{id}"
       }
       val params = getNonNullFields(t) + mapOf("id" to idField.get(t))
-      logger.debug { "SQL: $sqlTemplate,  PARAMS: $params" }
       return execute(sqlTemplate, params)
     } catch (e: Exception) {
       logger.error(e) { "Error updating entity: $t" }
@@ -206,7 +202,6 @@ open class RepositoryImpl<TId, TEntity : Any>(
         "UPDATE $tableName SET $setClause WHERE $idFieldName = #{id}"
       }
       val params = parameters + mapOf("id" to id)
-      logger.debug { "SQL: $sqlTemplate,  PARAMS: $params" }
       return execute(sqlTemplate, params)
     } catch (e: Exception) {
       logger.error(e) { "Error updating entity with id: $id" }
@@ -236,7 +231,6 @@ open class RepositoryImpl<TId, TEntity : Any>(
         "SELECT $columns FROM $tableName WHERE $field = #{value}"
       }
       val params = mapOf("value" to value)
-      logger.debug { "SQL: $sqlTemplate,  PARAMS: $params" }
       return get(sqlTemplate, params, clazz)
     } catch (e: Exception) {
       logger.error(e) { "Error getting entity by field: $field = $value" }
@@ -252,7 +246,6 @@ open class RepositoryImpl<TId, TEntity : Any>(
         "SELECT $columns FROM $tableName WHERE ${fieldMappings[field.name]} = #{value}"
       }
       val params = mapOf("value" to value)
-      logger.debug { "SQL: $sql,  PARAMS: $params" }
       return get(sql, params, clazz)
     } catch (e: Exception) {
       logger.error(e) { "Error getting entity by field: ${field.name} = $value" }
@@ -308,7 +301,7 @@ open class RepositoryImpl<TId, TEntity : Any>(
         .execute(params)
         .coAwait()
         .rowCount()
-    } catch (e: Exception) {
+    } catch (e: Throwable) {
       logger.error(e) { "Error executing SQL: $sql, PARAMS: $params" }
       throw Meta.repository(e.javaClass.simpleName, e.message)
     }
@@ -326,20 +319,14 @@ open class RepositoryImpl<TId, TEntity : Any>(
 
   // 其他工具方法
   private suspend fun getConnection(): SqlClient {
-    return if (TxCtx.isTransactionActive(coroutineContext)) {
-      TxCtx.currentSqlConnection(coroutineContext) ?: run {
-        logger.error("TransactionContextElement.sqlConnection is null")
-        return sqlClient
-      }
-    } else {
-      sqlClient
-    }
+    val txElem = coroutineContext[TxCtxElem]
+    return txElem?.connection ?: sqlClient
   }
 
   // 通用获取或创建 SQL 模板的方法
-  private fun getOrCreateSql(tableName: String, key: String, sqlProvider: () -> String): String {
-    val tableSqlMap = baseSqlCache.getOrPut(tableName) { ConcurrentHashMap() }
-    return tableSqlMap.getOrPut(key, sqlProvider)
+  private fun getOrCreateSql(tableName: String, sqlKey: String, generator: () -> String): String {
+    return baseSqlCache.computeIfAbsent(tableName) { ConcurrentHashMap() }
+      .computeIfAbsent(sqlKey) { generator() }
   }
 
   // 获取非空字段及其值

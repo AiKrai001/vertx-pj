@@ -113,15 +113,29 @@ class OpenApiSpecGenerator {
    */
   private fun generatePaths(): Paths {
     val paths = Paths()
+    val pathInfoMap = mutableMapOf<String, Pair<String, PathItem>>()
     // 获取所有带有 @Controller 注解的类
-    val packageName = ClassUtil.getMainClass()?.packageName
+    val packageName = ClassUtil.getMainClass().packageName
     val controllerClassSet = Reflections(packageName).getTypesAnnotatedWith(Controller::class.java)
     ClassUtil.getPublicMethods(controllerClassSet).forEach { (controllerClass, methods) ->
       val controllerInfo = extractControllerInfo(controllerClass)
       methods.forEach { method ->
         val pathInfo = generatePathInfo(method, controllerInfo)
-        paths.addPathItem(pathInfo.path, pathInfo.pathItem)
+        if (!pathInfo.pathItem.post?.tags?.first().isNullOrBlank()) {
+          pathInfoMap[pathInfo.path] = Pair(pathInfo.pathItem.post.tags.first(), pathInfo.pathItem)
+        }
+        if (!pathInfo.pathItem.get?.tags?.first().isNullOrBlank()) {
+          pathInfoMap[pathInfo.path] = Pair(pathInfo.pathItem.get.tags.first(), pathInfo.pathItem)
+        }
       }
+    }
+    val sortedMap = pathInfoMap.toList()
+      .sortedBy { it.second.second.post?.summary }
+      .sortedBy { it.second.second.get?.summary }
+      .sortedBy { it.second.first }
+      .toMap()
+    for ((key, value) in sortedMap) {
+      paths[key] = value.second
     }
     return paths
   }

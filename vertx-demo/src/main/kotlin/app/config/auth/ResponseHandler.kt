@@ -21,10 +21,6 @@ class ResponseHandler: ResponseHandlerInterface {
     val requestId = ctx.get<Long>("requestId") ?: -1L
     val code: Int
     val resStr = when (responseData) {
-      is Unit -> {
-        code = HttpStatus.NO_CONTENT
-        null
-      }
       is RespBean -> {
         code = responseData.code
         responseData.requestId = requestId
@@ -50,10 +46,11 @@ class ResponseHandler: ResponseHandlerInterface {
   // 业务异常处理
   override suspend fun exception(ctx: RoutingContext, e: Throwable) {
     logger.error { "${ctx.request().uri()}: ${e.stackTraceToString()}" }
-    val resObj = when(e) {
+    val resObj = when (e) {
       is Meta -> {
         RespBean.failure("${e.name}:${e.message}", e.data)
       }
+
       else -> {
         RespBean.failure("${e.javaClass.simpleName}${if (e.message != null) ":${e.message}" else ""}")
       }

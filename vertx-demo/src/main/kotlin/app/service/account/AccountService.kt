@@ -8,6 +8,7 @@ import cn.hutool.core.lang.Snowflake
 import cn.hutool.crypto.SecureUtil
 import com.google.inject.Inject
 import io.vertx.ext.web.RoutingContext
+import mu.KotlinLogging
 import org.aikrai.vertx.db.tx.withTransaction
 import org.aikrai.vertx.utlis.IpUtil
 import org.aikrai.vertx.utlis.Meta
@@ -18,11 +19,20 @@ class AccountService @Inject constructor(
   private val accountRepository: AccountRepository,
   private val tokenService: TokenService,
 ) {
+  private val logger = KotlinLogging.logger {  }
+
   suspend fun testTransaction() {
     withTransaction {
-      accountRepository.update(1L, mapOf("avatar" to "test001"))
-//    throw Meta.failure("test transaction", "test transaction")
-      accountRepository.update(1L, mapOf("avatar" to "test002"))
+      accountRepository.update(1L, mapOf("avatar" to "test0001"))
+
+      try {
+        withTransaction {
+          accountRepository.update(1L, mapOf("avatar" to "test002"))
+          throw Meta.error("test transaction", "test transaction")
+        }
+      } catch (e: Exception) {
+        logger.info { "内层事务失败已处理: ${e.message}" }
+      }
     }
   }
 
