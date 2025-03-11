@@ -8,7 +8,7 @@ import org.aikrai.vertx.context.D
 @D("Hello")
 @Controller("/")
 class HelloController {
-    suspend fun hello(): String {
-        return "Hello"
-    }
+  suspend fun hello(): String {
+    return "Hello"
+  }
 }

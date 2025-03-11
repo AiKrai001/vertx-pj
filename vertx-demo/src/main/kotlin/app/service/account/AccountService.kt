@@ -19,7 +19,7 @@ class AccountService @Inject constructor(
   private val accountRepository: AccountRepository,
   private val tokenService: TokenService,
 ) {
-  private val logger = KotlinLogging.logger {  }
+  private val logger = KotlinLogging.logger { }
 
   suspend fun testTransaction() {
     withTransaction {

@@ -2,7 +2,6 @@ package app.config
 
 import org.aikrai.vertx.constant.HttpStatus
 
-
 data class RespBean(
   val code: Int,
   val message: String,
@@ -39,7 +38,6 @@ data class RespBean(
     fun failure(code: Int, message: String, data: Any? = null): RespBean {
       return RespBean(code, message, data)
     }
-
 
     // 访问受限，授权过期
     fun forbidden(message: String?): RespBean {

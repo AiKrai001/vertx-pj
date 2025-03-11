@@ -6,8 +6,6 @@ import cn.hutool.core.util.IdUtil
 import com.google.inject.*
 import com.google.inject.name.Names
 import io.vertx.core.Vertx
-import io.vertx.core.http.HttpServer
-import io.vertx.core.http.HttpServerOptions
 import io.vertx.ext.auth.jwt.JWTAuth
 import io.vertx.pgclient.PgBuilder
 import io.vertx.pgclient.PgConnectOptions

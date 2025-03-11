@@ -19,7 +19,7 @@ import org.junit.jupiter.api.extension.ExtendWith
  * AuthControllerTest
  */
 @ExtendWith(VertxExtension::class)
-class AuthControllerTest{
+class AuthControllerTest {
   private var port = 8080
   private var basePath = "/api"
 
@@ -75,7 +75,9 @@ class AuthControllerTest{
           basePath = "/$it".replace("//", "/")
         }
         vertx.setTimer(5000) { testContext.completeNow() }
-      } else testContext.failNow(ar.cause())
+      } else {
+        testContext.failNow(ar.cause())
+      }
     }
   }
 }

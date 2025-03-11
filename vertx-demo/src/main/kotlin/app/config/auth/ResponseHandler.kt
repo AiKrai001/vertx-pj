@@ -10,7 +10,7 @@ import org.aikrai.vertx.jackson.JsonUtil
 import org.aikrai.vertx.utlis.Meta
 
 @Singleton
-class ResponseHandler: ResponseHandlerInterface {
+class ResponseHandler : ResponseHandlerInterface {
   private val logger = KotlinLogging.logger { }
 
   override suspend fun normal(

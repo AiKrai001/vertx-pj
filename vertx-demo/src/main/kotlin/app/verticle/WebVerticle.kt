@@ -41,7 +41,6 @@ class WebVerticle @Inject constructor(
 ) : CoroutineVerticle() {
   private val logger = KotlinLogging.logger { }
 
-
   override suspend fun start() {
     val rootRouter = Router.router(vertx)
     val router = Router.router(vertx)
@@ -92,7 +91,7 @@ class WebVerticle @Inject constructor(
     if (failure != null) {
       logger.error { "${ctx.request().uri()}: ${failure.stackTraceToString()}" }
       val resObj = when (failure) {
-        is Meta -> RespBean.failure(ctx.statusCode(),"${failure.name}:${failure.message}", failure.data)
+        is Meta -> RespBean.failure(ctx.statusCode(), "${failure.name}:${failure.message}", failure.data)
         else -> RespBean.failure("${failure.javaClass.simpleName}${if (failure.message != null) ":${failure.message}" else ""}")
       }
       val resStr = JsonUtil.toJsonStr(resObj)
