@@ -1,8 +1,8 @@
-package app.domain.account.modle
+package app.data.domain.account.modle
 
-import app.domain.account.Account
-import app.domain.menu.Menu
-import app.domain.role.Role
+import app.data.domain.account.Account
+import app.data.domain.menu.Menu
+import app.data.domain.role.Role
 
 data class AccountRoleAccessDTO(
   val account: Account,

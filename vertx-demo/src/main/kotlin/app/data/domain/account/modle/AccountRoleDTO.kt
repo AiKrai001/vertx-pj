@@ -1,6 +1,6 @@
-package app.base.domain.auth.modle
+package app.data.domain.account.modle
 
-import app.domain.role.Role
+import app.data.domain.role.Role
 
 data class AccountRoleDTO(
   val id: Long,

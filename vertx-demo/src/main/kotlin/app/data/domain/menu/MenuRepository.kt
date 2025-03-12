@@ -1,7 +1,5 @@
-package app.base.domain.auth.menu
+package app.data.domain.menu
 
-import app.domain.menu.Menu
-import app.domain.menu.MenuRepositoryImpl
 import com.google.inject.ImplementedBy
 import org.aikrai.vertx.db.Repository
 

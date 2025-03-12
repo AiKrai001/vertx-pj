@@ -1,6 +1,6 @@
-package app.base.domain.auth.menu.modle
+package app.data.domain.menu.modle
 
-import app.domain.menu.Menu
+import app.data.domain.menu.Menu
 
 class TreeSelect {
 

@@ -1,7 +1,6 @@
-package app.domain.menu
+package app.data.domain.menu
 
-import app.base.domain.auth.menu.MenuRepository
-import app.domain.account.Account
+import app.data.domain.account.Account
 import com.google.inject.Inject
 import com.google.inject.Singleton
 import io.vertx.ext.auth.User

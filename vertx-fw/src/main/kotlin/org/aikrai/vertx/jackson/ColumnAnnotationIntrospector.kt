@@ -15,8 +15,9 @@ class ColumnAnnotationIntrospector : JacksonAnnotationIntrospector() {
   }
 
   private fun getColumnName(annotated: Annotated?): PropertyName? {
-    if (annotated == null) return null
-    val column = annotated.getAnnotation(TableField::class.java)
-    return column?.let { PropertyName(it.value) }
+    return null
+//    if (annotated == null) return null
+//    val column = annotated.getAnnotation(TableField::class.java)
+//    return column?.let { PropertyName(it.value) }
   }
 }

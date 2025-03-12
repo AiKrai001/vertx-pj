@@ -1,5 +1,9 @@
 package org.aikrai.vertx.db.annotation
 
+import java.lang.annotation.Documented
+import java.lang.annotation.ElementType
+import java.lang.annotation.RetentionPolicy
+
 @MustBeDocumented
 @Retention(AnnotationRetention.RUNTIME)
 @Target(AnnotationTarget.CLASS, AnnotationTarget.ANNOTATION_CLASS)
@@ -31,6 +35,11 @@ annotation class TableField(
 //  val property: String = "",
 //  val numericScale: String = ""
 )
+
+@MustBeDocumented
+@Retention(AnnotationRetention.RUNTIME)
+@Target(AnnotationTarget.FIELD, AnnotationTarget.ANNOTATION_CLASS, AnnotationTarget.FUNCTION)
+annotation class EnumValue
 
 /**
  * IdType

@@ -35,6 +35,7 @@ open class RepositoryImpl<TId, TEntity : Any>(
     private val idFieldCache = ConcurrentHashMap<String, Field>()
     private val idFieldNameCache = ConcurrentHashMap<String, String>()
     private val tableNameCache = ConcurrentHashMap<String, String>()
+
     // sqlCache
     private val baseSqlCache = ConcurrentHashMap<String, ConcurrentHashMap<String, String>>()
     private val queryClientCache = ConcurrentHashMap<String, Any>()
@@ -93,7 +94,7 @@ open class RepositoryImpl<TId, TEntity : Any>(
       val idAnnotation = idField.getAnnotation(TableId::class.java)
       val idValue = idField.get(t)
       val excludeId = idAnnotation != null && (idValue == null || idValue == 0L || idValue == -1L) &&
-        (idAnnotation.type == IdType.AUTO)
+          (idAnnotation.type == IdType.AUTO)
       val sqlKey = if (excludeId) "createExcludeId" else "createIncludeId"
 
       val sqlTemplate = getOrCreateSql(tableName, sqlKey) {
@@ -120,6 +121,7 @@ open class RepositoryImpl<TId, TEntity : Any>(
         IdType.INPUT -> {
           if (idValue == 0L || idValue == -1L) throw Meta.repository("CreateError", "must provide ID value")
         }
+
         IdType.ASSIGN_ID -> params[idField.name] = IdUtil.getSnowflakeNextId()
         IdType.ASSIGN_UUID -> params[idField.name] = IdUtil.simpleUUID()
         else -> {}
@@ -137,6 +139,7 @@ open class RepositoryImpl<TId, TEntity : Any>(
                 else -> null
               }
             }
+
             else -> null
           }
           if (value != null) params[field.name] = value
@@ -331,11 +334,36 @@ open class RepositoryImpl<TId, TEntity : Any>(
 
   // 获取非空字段及其值
   private fun getNonNullFields(t: TEntity): Map<String, Any> {
-    return fields.filter { !it.isAnnotationPresent(Transient::class.java) && it.get(t) != null }
-      .associate { it.name to it.get(t) }
+    return fields
+      .filter {
+        !it.isAnnotationPresent(Transient::class.java) && it.get(t) != null
+      }
+      .associate {
+        val value = it.get(t)
+        if (it.type.isEnum) {
+          it.name to (getEnumValue(value) ?: (value as Enum<*>).name)
+        } else {
+          it.name to value
+        }
+      }
   }
 
-  /**
+  private fun getEnumValue(enumValue: Any?): Any? {
+    if (enumValue == null || !enumValue::class.java.isEnum) {
+      return null // 不是枚举或为空，直接返回 null
+    }
+    val enumClass = enumValue::class.java
+    val methods = enumClass.declaredMethods
+    for (method in methods) {
+      if (method.isAnnotationPresent(EnumValue::class.java)) {
+        method.isAccessible = true // 如果方法是私有的，设置为可访问
+        return method.invoke(enumValue) // 调用带有 @EnumValue 注解的方法
+      }
+    }
+    return null // 没有找到带有 @EnumValue 注解的方法
+  }
+
+    /**
    * 生成批量 INSERT SQL 语句的函数
    * @param objects 要插入的对象列表
    * @return 生成的 SQL 语句字符串
@@ -366,10 +394,13 @@ open class RepositoryImpl<TId, TEntity : Any>(
       is Number, is Boolean -> value.toString() // 数字和布尔类型，直接转换为字符串
       is Timestamp -> // 时间戳类型
         "'${OffsetDateTime.ofInstant(value.toInstant(), ZoneId.systemDefault())}'"
+
       is Array<*> -> // 数组类型处理
         if (value.isEmpty()) "'{}'" else "'{${value.joinToString(",") { escapeSql(it?.toString() ?: "NULL") }}}'"
+
       is Collection<*> -> // 集合类型处理
         if (value.isEmpty()) "'{}'" else "'{${value.joinToString(",") { escapeSql(it?.toString() ?: "NULL") }}}'"
+
       else -> "'${escapeSql(value.toString())}'" // 其他类型，调用 toString() 后转义并加单引号
     }
     // 构建 VALUES 部分，每个对象对应一组值

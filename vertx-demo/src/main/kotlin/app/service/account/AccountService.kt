@@ -1,9 +1,9 @@
 package app.service.account
 
 import app.config.auth.TokenService
-import app.domain.account.Account
-import app.domain.account.AccountRepository
-import app.domain.account.LoginDTO
+import app.data.domain.account.Account
+import app.data.domain.account.AccountRepository
+import app.data.domain.account.LoginDTO
 import cn.hutool.core.lang.Snowflake
 import cn.hutool.crypto.SecureUtil
 import com.google.inject.Inject

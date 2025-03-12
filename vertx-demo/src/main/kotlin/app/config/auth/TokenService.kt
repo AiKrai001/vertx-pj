@@ -1,6 +1,6 @@
 package app.config.auth
 
-import app.domain.account.AccountRepository
+import app.data.domain.account.AccountRepository
 import app.port.reids.RedisClient
 import cn.hutool.core.lang.Snowflake
 import cn.hutool.core.util.IdUtil

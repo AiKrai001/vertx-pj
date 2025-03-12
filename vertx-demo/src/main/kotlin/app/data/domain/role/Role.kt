@@ -1,4 +1,4 @@
-package app.domain.role
+package app.data.domain.role
 
 import org.aikrai.vertx.db.annotation.TableName
 import org.aikrai.vertx.utlis.BaseEntity

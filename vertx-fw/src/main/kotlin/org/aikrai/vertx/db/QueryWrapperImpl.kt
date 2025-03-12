@@ -263,6 +263,7 @@ class QueryWrapperImpl<T : Any>(
         "IN", "NOT IN" -> {
           params[it.column] = "(${(it.value as Collection<*>).joinToString(",")})"
         }
+
         else -> {
           params[it.column] = it.value.toString()
         }
@@ -292,7 +293,7 @@ class QueryWrapperImpl<T : Any>(
         .execute(params)
         .coAwait()
         .toList()
-      return objs.map { JsonUtil.parseObject(it.encode(), clazz) }.also { conditions.clear() }
+      return objs.map { JsonUtil.parseObject(it, clazz, true) }.also { conditions.clear() }
     } catch (e: Exception) {
       conditions.clear()
       throw Meta.repository(e.javaClass.simpleName, e.message)

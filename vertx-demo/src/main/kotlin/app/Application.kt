@@ -17,6 +17,7 @@ object Application {
       Config.init(vertx)
       val getIt = InjectConfig.configure(vertx)
       val mainVerticle = getIt.getInstance(MainVerticle::class.java)
+
       vertx.deployVerticle(mainVerticle).onComplete {
         if (it.failed()) {
           logger.error { "MainVerticle startup failed: ${it.cause()?.stackTraceToString()}" }

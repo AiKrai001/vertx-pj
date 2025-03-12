@@ -1,6 +1,5 @@
-package app.domain.menu
+package app.data.domain.menu
 
-import app.base.domain.auth.menu.MenuRepository
 import com.google.inject.Inject
 import io.vertx.sqlclient.SqlClient
 import org.aikrai.vertx.db.RepositoryImpl

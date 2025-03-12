@@ -3,6 +3,7 @@ package org.aikrai.vertx.context
 import cn.hutool.core.util.StrUtil
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.vertx.core.http.HttpMethod
+import io.vertx.core.json.JsonObject
 import io.vertx.ext.auth.User
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
@@ -11,6 +12,8 @@ import kotlinx.coroutines.launch
 import org.aikrai.vertx.auth.*
 import org.aikrai.vertx.config.resp.DefaultResponseHandler
 import org.aikrai.vertx.config.resp.ResponseHandlerInterface
+import org.aikrai.vertx.db.annotation.EnumValue
+import org.aikrai.vertx.jackson.JsonUtil
 import org.aikrai.vertx.utlis.ClassUtil
 import org.aikrai.vertx.utlis.Meta
 import org.reflections.Reflections
@@ -73,8 +76,10 @@ class RouterBuilder(
               isList = parameter.type.classifier == List::class,
               isComplex = !parameter.type.classifier.toString().startsWith("class kotlin.") &&
                   !parameter.type.classifier.toString().startsWith("class io.vertx") &&
+                  !(parameter.type.javaType as Class<*>).isEnum &&
                   !parameter.type.javaType.javaClass.isEnum &&
-                  parameter.type.javaType is Class<*>
+                  parameter.type.javaType is Class<*>,
+              isEnum = typeClass?.isEnum ?: (parameter.type.javaType as Class<*>).isEnum
             )
           }
           routeInfoCache[reqPath to httpMethod] =
@@ -163,15 +168,6 @@ class RouterBuilder(
       }
     }
 
-    private fun getReqPath(prefix: String, clazz: Class<*>): String {
-      val basePath = if (prefix.isNotBlank()) {
-        StrUtil.toCamelCase(StrUtil.toUnderlineCase(prefix))
-      } else {
-        StrUtil.toCamelCase(StrUtil.toUnderlineCase(clazz.simpleName.removeSuffix("Controller")))
-      }
-      return "/$basePath".replace("//", "/")
-    }
-
     private fun getReqPath(prefix: String, clazz: Class<*>, method: Method): String {
       var classPath = if (prefix.isNotBlank()) {
         StrUtil.toCamelCase(StrUtil.toUnderlineCase(prefix))
@@ -189,31 +185,57 @@ class RouterBuilder(
       val queryParams = ctx.queryParams().entries().associate { it.key to it.value }
       val combinedParams = formAttributes + queryParams
       // 解析Body
-      val bodyStr = if (!ctx.body().isEmpty) ctx.body().asString() else ""
-      val bodyAsMap = if (bodyStr.isNotBlank()) {
-        try {
-          objectMapper.readValue(bodyStr, Map::class.java) as Map<String, Any>
-        } catch (e: Exception) {
-          emptyMap()
-        }
-      } else {
-        emptyMap()
-      }
+      val bodyObj = if (!ctx.body().isEmpty) ctx.body().asJsonObject() else null
+      val bodyMap = bodyObj?.map ?: emptyMap()
 
       paramsInfo.forEach { param ->
         if (param.isList) {
-          val listParamValue = ctx.queryParams().getAll(param.name)
-          if (listParamValue.isEmpty() && !param.isNullable) throw IllegalArgumentException("Missing required parameter: ${param.name}")
-          params.add(listParamValue)
+          var value = ctx.queryParams().getAll(param.name)
+          if (value.isEmpty() && bodyMap[param.name] != null) {
+            value = (bodyMap[param.name] as Collection<*>).map { it.toString() }.toMutableList()
+          }
+          if (value.isEmpty() && !param.isNullable) {
+            throw IllegalArgumentException("Missing required parameter: ${param.name}")
+          }
+          params.add(value.ifEmpty { null })
           return@forEach
         }
+
+        if (param.isEnum) {
+          val value = sequenceOf(
+            combinedParams[param.name],
+            bodyMap[param.name]
+          ).filterNotNull().map { it.toString() }.firstOrNull()
+
+          val enumValueMethod = param.type.methods.find { method ->
+            method.isAnnotationPresent(EnumValue::class.java)
+          }
+          val enumValue = param.type.enumConstants.firstOrNull { enumConstant ->
+            if (enumValueMethod != null) {
+              enumValueMethod.invoke(enumConstant).toString() == value
+            } else {
+              (enumConstant as Enum<*>).name == value
+            }
+          }
+          if (enumValue != null) params.add(enumValue)
+          return@forEach
+        }
+
         if (param.isComplex) {
           try {
-            val value = objectMapper.readValue(bodyStr, param.type)
-            params.add(value)
+            val value = sequenceOf(
+              if (paramsInfo.size == 1) bodyObj else null,
+              bodyMap[param.name]?.let { JsonUtil.toJsonObject(it) },
+              combinedParams[param.name]?.let { JsonObject(it) },
+              bodyObj
+            ).filterNotNull().firstOrNull { !it.isEmpty }
+            if (value?.isEmpty == true && !param.isNullable) {
+              throw IllegalArgumentException("Missing required parameter: ${param.name}")
+            }
+            params.add(if (value == null || value.isEmpty) null else JsonUtil.parseObject(value, param.type))
             return@forEach
           } catch (e: Exception) {
-            if (!param.isNullable) throw IllegalArgumentException("Failed to parse request body for parameter: ${param.name}")
+            throw IllegalArgumentException(e.message, e)
           }
         }
 
@@ -222,7 +244,7 @@ class RouterBuilder(
             RoutingContext::class.java -> ctx
             User::class.java -> ctx.user()
             else -> {
-              val bodyValue = bodyAsMap[param.name]
+              val bodyValue = bodyMap[param.name]
               val paramValue = bodyValue?.toString() ?: combinedParams[param.name]
               when {
                 paramValue == null -> {
@@ -254,16 +276,12 @@ class RouterBuilder(
      * @return 转换为目标类型的参数值，如果转换失败则返回 `null`。
      */
     private fun getParamValue(paramValue: String, type: Class<*>): Any? {
-      return when {
-        type.isEnum -> {
-          type.enumConstants.firstOrNull { (it as Enum<*>).name.equals(paramValue, ignoreCase = true) }
-        }
-
-        type == String::class.java -> paramValue
-        type == Int::class.java || type == Integer::class.java -> paramValue.toIntOrNull()
-        type == Long::class.java || type == Long::class.java -> paramValue.toLongOrNull()
-        type == Double::class.java || type == Double::class.java -> paramValue.toDoubleOrNull()
-        type == Boolean::class.java || type == Boolean::class.java -> paramValue.toBoolean()
+      return when (type) {
+        String::class.java -> paramValue
+        Int::class.java, Integer::class.java -> paramValue.toIntOrNull()
+        Long::class.java, Long::class.java -> paramValue.toLongOrNull()
+        Double::class.java, Double::class.java -> paramValue.toDoubleOrNull()
+        Boolean::class.java, Boolean::class.java -> paramValue.toBoolean()
         else -> paramValue
       }
     }
@@ -298,6 +316,21 @@ class RouterBuilder(
     private fun serializeToJson(obj: Any?): String {
       return objectMapper.writeValueAsString(obj)
     }
+
+    private fun getEnumValue(enumValue: Any?): Any? {
+      if (enumValue == null || !enumValue::class.java.isEnum) {
+        return null // 不是枚举或为空，直接返回 null
+      }
+      val enumClass = enumValue::class.java
+      val methods = enumClass.declaredMethods
+      for (method in methods) {
+        if (method.isAnnotationPresent(EnumValue::class.java)) {
+          method.isAccessible = true // 如果方法是私有的，设置为可访问
+          return method.invoke(enumValue) // 调用带有 @EnumValue 注解的方法
+        }
+      }
+      return null // 没有找到带有 @EnumValue 注解的方法
+    }
   }
 
   private data class RouteInfo(
@@ -316,6 +349,7 @@ class RouterBuilder(
     val type: Class<*>,
     val isNullable: Boolean,
     val isList: Boolean,
-    val isComplex: Boolean
+    val isComplex: Boolean,
+    val isEnum: Boolean
   )
 }

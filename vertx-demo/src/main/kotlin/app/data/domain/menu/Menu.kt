@@ -1,4 +1,4 @@
-package app.domain.menu
+package app.data.domain.menu
 
 import org.aikrai.vertx.db.annotation.IdType
 import org.aikrai.vertx.db.annotation.TableId

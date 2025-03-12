@@ -1,8 +1,8 @@
 package app.controller
 
-import app.domain.CargoType
-import app.domain.account.Account
-import app.domain.account.AccountRepository
+import app.data.domain.account.Account
+import app.data.domain.account.AccountRepository
+import app.data.emun.Status
 import app.service.account.AccountService
 import com.google.inject.Inject
 import mu.KotlinLogging
@@ -28,13 +28,15 @@ class Demo1Controller @Inject constructor(
     @D("name", "姓名") name: String?,
     @D("age", "年龄") age: Int?,
     @D("list", "列表") list: List<String>?,
-    @D("cargoType", "货物类型") cargoType: CargoType?
+    @D("status", "状态-0正常,1禁用,2删除") status: Status?,
+    @D("account", "账号") account: Account?
   ) {
     logger.info { "你好" }
     println(age)
     println(list)
     println("test-$name")
-    println(cargoType)
+    println(status)
+    println(account)
   }
 
   @D("事务测试")

@@ -4,7 +4,7 @@ import app.config.RespBean
 import app.config.auth.JwtAuthenticationHandler
 import app.config.auth.ResponseHandler
 import app.config.auth.TokenService
-import app.domain.account.Account
+import app.data.domain.account.Account
 import app.port.aipfox.ApifoxClient
 import cn.hutool.core.lang.Snowflake
 import com.google.inject.Inject

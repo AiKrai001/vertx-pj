@@ -1,4 +1,4 @@
-package app.domain.role
+package app.data.domain.role
 
 import com.google.inject.ImplementedBy
 import org.aikrai.vertx.db.Repository

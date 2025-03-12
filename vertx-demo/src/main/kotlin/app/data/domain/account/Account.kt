@@ -1,6 +1,8 @@
-package app.domain.account
+package app.data.domain.account
 
+import app.data.emun.Status
 import org.aikrai.vertx.db.annotation.*
+import org.aikrai.vertx.jackson.JsonUtil
 import org.aikrai.vertx.utlis.BaseEntity
 import java.sql.Timestamp
 
@@ -23,7 +25,7 @@ class Account : BaseEntity() {
 
   var password: String? = null
 
-  var status: Char? = null
+  var status: Status? = Status.ACTIVE
 
   var delFlag: Char? = null
 
@@ -31,4 +33,8 @@ class Account : BaseEntity() {
 
   @TableField(fill = FieldFill.UPDATE)
   var loginDate: Timestamp? = null
+
+  override fun toString(): String {
+    return JsonUtil.toJsonStr(this)
+  }
 }

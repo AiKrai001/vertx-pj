@@ -14,20 +14,27 @@ import io.swagger.v3.oas.models.parameters.Parameter
 import io.swagger.v3.oas.models.parameters.RequestBody
 import io.swagger.v3.oas.models.responses.ApiResponse
 import io.swagger.v3.oas.models.responses.ApiResponses
+import io.swagger.v3.oas.models.security.SecurityScheme
 import io.swagger.v3.oas.models.servers.Server
 import mu.KotlinLogging
 import org.aikrai.vertx.context.Controller
 import org.aikrai.vertx.context.CustomizeRequest
 import org.aikrai.vertx.context.D
+import org.aikrai.vertx.db.annotation.EnumValue
 import org.aikrai.vertx.utlis.ClassUtil
 import org.reflections.Reflections
 import java.lang.reflect.Method
 import java.lang.reflect.ParameterizedType
+import java.lang.reflect.Type
 import java.sql.Date
 import java.sql.Time
 import java.sql.Timestamp
 import java.time.*
+import kotlin.reflect.KClass
 import kotlin.reflect.KParameter
+import kotlin.reflect.KType
+import kotlin.reflect.full.declaredMemberProperties
+import kotlin.reflect.jvm.javaField
 import kotlin.reflect.jvm.javaType
 import kotlin.reflect.jvm.kotlinFunction
 
@@ -47,6 +54,8 @@ class OpenApiSpecGenerator {
     private val PRIMITIVE_TYPE_MAPPING = mapOf(
       // java.lang classes
       String::class.java to "string",
+      Char::class.java to "string",
+      java.lang.Character::class.java to "string",
       Int::class.java to "integer",
       Integer::class.java to "integer",
       Long::class.java to "number",
@@ -222,35 +231,17 @@ class OpenApiSpecGenerator {
    * @return ApiResponses 对象
    */
   private fun generateResponsesFromReturnType(method: Method): ApiResponses {
-    val returnType = method.kotlinFunction?.returnType?.javaType
-    val schema = when (returnType) {
-      // 处理泛型返回类型
-      is ParameterizedType -> {
-        val rawType = returnType.rawType as Class<*>
-        val typeArguments = returnType.actualTypeArguments
-        when {
-          // 处理集合类型
-          Collection::class.java.isAssignableFrom(rawType) -> {
-            Schema<Any>().apply {
-              type = "array"
-              items = generateSchema(
-                typeArguments[0].let {
-                  when (it) {
-                    is Class<*> -> it
-                    is ParameterizedType -> it.rawType as Class<*>
-                    else -> Any::class.java
-                  }
-                }
-              )
-            }
-          }
-          // 可以添加其他泛型类型的处理
-          else -> generateSchema(rawType)
-        }
-      }
-      // 处理普通类型
-      is Class<*> -> generateSchema(returnType)
-      else -> Schema<Any>().type("object")
+    val returnType = method.kotlinFunction?.returnType
+    // 创建 RespBean 的架构
+    val respBeanSchema = Schema<Any>().apply {
+      type = "object"
+      properties = mapOf(
+        "code" to Schema<Int>().type("integer").example(200),
+        "message" to Schema<String>().type("string").example("Success"),
+        "data" to generateDataSchema(returnType),
+        "requestId" to Schema<Long>().type("integer").format("int64").example(1899712678486753280)
+      )
+      required = listOf("code", "message", "data")
     }
 
     return ApiResponses().addApiResponse(
@@ -259,11 +250,67 @@ class OpenApiSpecGenerator {
         description = "OK"
         content = Content().addMediaType(
           "application/json",
-          MediaType().schema(schema)
+          MediaType().schema(respBeanSchema)
         )
         headers = mapOf()
       }
     )
+  }
+
+  // 新增辅助方法，用于生成 data 字段的 Schema
+  private fun generateDataSchema(returnType: KType?): Schema<Any> {
+    if (returnType == null) {
+      return Schema<Any>().type("null")
+    }
+
+    return when (val classifier = returnType.classifier) {
+      is KClass<*> -> {
+        when {
+          // 处理集合类型
+          Collection::class.java.isAssignableFrom(classifier.java) -> {
+            Schema<Any>().apply {
+              type = "array"
+              items = generateSchema(
+                (returnType.arguments.firstOrNull()?.type?.classifier as? KClass<*> ?: Any::class).java,
+                false
+              )
+            }
+          }
+          else -> generateSchema(classifier.java)
+        }
+      }
+      else -> Schema<Any>().type("object")
+    }
+
+//    return when (returnType) {
+//      // 处理泛型返回类型
+//      is ParameterizedType -> {
+//        val rawType = returnType.rawType as Class<*>
+//        val typeArguments = returnType.actualTypeArguments
+//        when {
+//          // 处理集合类型
+//          Collection::class.java.isAssignableFrom(rawType) -> {
+//            Schema<Any>().apply {
+//              type = "array"
+//              items = generateSchema(
+//                typeArguments[0].let {
+//                  when (it) {
+//                    is Class<*> -> it
+//                    is ParameterizedType -> it.rawType as Class<*>
+//                    else -> Any::class.java
+//                  }
+//                }, isNullable
+//              )
+//            }
+//          }
+//          else -> generateSchema(rawType, isNullable)
+//        }
+//      }
+//      // 处理普通类型
+//      is Class<*> -> generateSchema(returnType, isNullable)
+//      null -> Schema<Any>().type("null")
+//      else -> Schema<Any>().type("object")
+//    }
   }
 
   /**
@@ -329,7 +376,7 @@ class OpenApiSpecGenerator {
    * @param type 参数类型
    * @return OpenAPI Schema 对象
    */
-  private fun generateSchema(type: Class<*>): Schema<Any> {
+  private fun generateSchema(type: Class<*>, isNullable: Boolean = false): Schema<Any> {
     // 如果该类型已经处理过，则返回一个空的 Schema，避免循环引用
     if (processedTypes.contains(type)) {
       return Schema<Any>().apply {
@@ -344,30 +391,66 @@ class OpenApiSpecGenerator {
       PRIMITIVE_TYPE_MAPPING.containsKey(type) -> Schema<Any>().apply {
         this.type = PRIMITIVE_TYPE_MAPPING[type]
         deprecated = false
+        nullable = isNullable
       }
       // 处理枚举类型
       type.isEnum -> Schema<Any>().apply {
-        this.type = "string"
-        enum = type.enumConstants?.map { it.toString() }
+        val enumValueMethod = type.methods.find { method ->
+          method.isAnnotationPresent(EnumValue::class.java)
+        }
+        this.type = if (enumValueMethod != null) {
+          when (enumValueMethod.returnType) {
+            String::class.java -> "string"
+            Int::class.java, java.lang.Integer::class.java -> "integer"
+            Long::class.java, java.lang.Long::class.java -> "integer"
+            Double::class.java, java.lang.Double::class.java -> "number"
+            Float::class.java, java.lang.Float::class.java -> "number"
+            Boolean::class.java, java.lang.Boolean::class.java -> "boolean"
+            else -> "string" // 默认情况下使用 string
+          }
+        } else {
+          "string" // 如果没有 enumValueMethod，默认使用 string
+        }
+        enum = type.enumConstants?.map {
+          if (enumValueMethod != null) {
+            enumValueMethod.invoke(it)
+          } else {
+            it.toString()
+          }
+        }
+        nullable = isNullable
       }
       type.name.startsWith("java.lang") || type.name.startsWith("java.time") || type.name.startsWith("java.sql") -> Schema<Any>().apply {
         this.type = type.simpleName.lowercase()
         deprecated = false
+        nullable = isNullable
       }
       type.name.startsWith("java") -> Schema<Any>().apply {
         this.type = type.simpleName.lowercase()
         deprecated = false
+        nullable = isNullable
       }
-      // 处理自定义对象
       else -> Schema<Any>().apply {
         this.type = "object"
-        properties = type.declaredFields
-          .filter { !it.isSynthetic }
-          .associate { field ->
-            field.isAccessible = true
-            field.name to generateSchema(field.type)
+        properties = type.kotlin.declaredMemberProperties
+          .associate { property ->
+            val field = property.javaField
+            field?.isAccessible = true
+            val nullable = property.returnType.isMarkedNullable
+            val fieldType = field?.type ?: Any::class.java
+            property.name to generateSchema(fieldType, nullable)
           }
       }
+      // 处理自定义对象
+//      else -> Schema<Any>().apply {
+//        this.type = "object"
+//        properties = type.declaredFields
+//          .filter { !it.isSynthetic }
+//          .associate { field ->
+//            field.isAccessible = true
+//            field.name to generateSchema(field.type, )
+//          }
+//      }
     }.also {
       // 处理完后，从已处理集合中移除当前类型
       processedTypes.remove(type)

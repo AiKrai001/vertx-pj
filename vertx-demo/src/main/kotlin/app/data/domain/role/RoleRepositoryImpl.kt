@@ -1,4 +1,4 @@
-package app.domain.role
+package app.data.domain.role
 
 import com.google.inject.Inject
 import io.vertx.sqlclient.SqlClient
