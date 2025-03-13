@@ -1,5 +1,6 @@
 package app.port.aipfox
 
+import app.util.openapi.OpenApiSpecGenerator
 import com.google.inject.Inject
 import com.google.inject.name.Named
 import io.vertx.core.Vertx
@@ -8,7 +9,6 @@ import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.client.WebClient
 import io.vertx.ext.web.client.WebClientOptions
 import mu.KotlinLogging
-import org.aikrai.vertx.openapi.OpenApiSpecGenerator
 
 class ApifoxClient @Inject constructor(
   private val vertx: Vertx,

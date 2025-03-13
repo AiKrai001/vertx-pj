@@ -1,4 +1,4 @@
-package org.aikrai.vertx.openapi
+package app.util.openapi
 
 import cn.hutool.core.util.StrUtil
 import io.swagger.v3.core.util.Json
@@ -14,7 +14,6 @@ import io.swagger.v3.oas.models.parameters.Parameter
 import io.swagger.v3.oas.models.parameters.RequestBody
 import io.swagger.v3.oas.models.responses.ApiResponse
 import io.swagger.v3.oas.models.responses.ApiResponses
-import io.swagger.v3.oas.models.security.SecurityScheme
 import io.swagger.v3.oas.models.servers.Server
 import mu.KotlinLogging
 import org.aikrai.vertx.context.Controller
@@ -25,7 +24,6 @@ import org.aikrai.vertx.utlis.ClassUtil
 import org.reflections.Reflections
 import java.lang.reflect.Method
 import java.lang.reflect.ParameterizedType
-import java.lang.reflect.Type
 import java.sql.Date
 import java.sql.Time
 import java.sql.Timestamp
@@ -219,7 +217,9 @@ class OpenApiSpecGenerator {
   private fun buildPath(controllerPrefix: String, methodName: String): String {
     val classPath = if (controllerPrefix != "/") {
       StrUtil.toCamelCase(StrUtil.toUnderlineCase(controllerPrefix))
-    } else ""
+    } else {
+      ""
+    }
     val methodPath = StrUtil.toCamelCase(StrUtil.toUnderlineCase(methodName))
     return "/$classPath/$methodPath".replace("//", "/")
   }
