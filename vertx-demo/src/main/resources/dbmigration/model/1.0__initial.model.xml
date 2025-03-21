@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<migration generated="2025-03-21T15:27:45.6470429">
+  <changeSet type="apply">
+    <createTable name="sys_menu" pkName="pk_sys_menu">
+      <column name="menu_id" notnull="true" primaryKey="true" type="BIGINT"/>
+      <column name="menu_name" type="VARCHAR(255)"/>
+      <column name="parent_id" type="BIGINT"/>
+      <column name="order_num" type="INTEGER"/>
+      <column name="path" type="VARCHAR(255)"/>
+      <column name="component" type="VARCHAR(255)"/>
+      <column name="menu_type" type="VARCHAR(255)"/>
+      <column name="visible" type="VARCHAR(255)"/>
+      <column name="perms" type="VARCHAR(255)"/>
+      <column name="parent_name" type="VARCHAR(255)"/>
+      <column name="children" type="JSONB"/>
+    </createTable>
+    <createTable name="sys_user" pkName="pk_sys_user">
+      <column name="user_id" notnull="true" primaryKey="true" type="BIGINT"/>
+      <column name="user_name" type="VARCHAR(255)"/>
+      <column name="user_type" type="VARCHAR(255)"/>
+      <column name="email" type="VARCHAR(255)"/>
+      <column name="phone" type="VARCHAR(255)"/>
+      <column name="avatar" type="VARCHAR(255)"/>
+      <column name="password" type="VARCHAR(255)"/>
+      <column defaultValue="0" name="status" type="INTEGER"/>
+      <column name="del_flag" type="CHAR(1)"/>
+      <column name="login_ip" type="VARCHAR(255)"/>
+      <column name="login_date" type="TIMESTAMPTZ"/>
+    </createTable>
+    <createTable name="sys_role">
+      <column name="role_id" type="BIGINT"/>
+      <column name="role_name" type="VARCHAR(255)"/>
+      <column name="role_key" type="VARCHAR(255)"/>
+      <column name="role_sort" type="INTEGER"/>
+      <column name="data_scope" type="CHAR(1)"/>
+      <column name="status" type="CHAR(1)"/>
+      <column name="del_flag" type="CHAR(1)"/>
+    </createTable>
+  </changeSet>
+</migration>

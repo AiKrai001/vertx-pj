@@ -34,6 +34,18 @@ annotation class TableField(
 //  val keepGlobalFormat: Boolean = false,
 //  val property: String = "",
 //  val numericScale: String = ""
+  val type: String = "",
+  val length: Int = 255,
+  val nullable: Boolean = true,
+  val unique: Boolean = false,
+  val default: String = ""
+)
+
+@MustBeDocumented
+@Retention(AnnotationRetention.RUNTIME)
+@Target(AnnotationTarget.FIELD, AnnotationTarget.ANNOTATION_CLASS)
+annotation class TableFieldComment(
+  val value: String = "",
 )
 
 @MustBeDocumented

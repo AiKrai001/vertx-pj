@@ -4,7 +4,7 @@ import app.data.domain.account.modle.AccountRoleAccessDTO
 import app.data.domain.account.modle.AccountRoleDTO
 import com.google.inject.Inject
 import io.vertx.sqlclient.SqlClient
-import org.aikrai.vertx.db.RepositoryImpl
+import org.aikrai.vertx.db.wrapper.RepositoryImpl
 
 class AccountRepositoryImpl @Inject constructor(
   sqlClient: SqlClient

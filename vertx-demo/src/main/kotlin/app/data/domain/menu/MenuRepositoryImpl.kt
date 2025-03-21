@@ -2,7 +2,7 @@ package app.data.domain.menu
 
 import com.google.inject.Inject
 import io.vertx.sqlclient.SqlClient
-import org.aikrai.vertx.db.RepositoryImpl
+import org.aikrai.vertx.db.wrapper.RepositoryImpl
 
 class MenuRepositoryImpl @Inject constructor(
   sqlClient: SqlClient

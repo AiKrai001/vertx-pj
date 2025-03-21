@@ -41,16 +41,8 @@ tasks.test {
   }
 }
 
-tasks.compileKotlin {
-  kotlinOptions {
-    jvmTarget = "17"
-  }
-}
-
-tasks.compileTestKotlin {
-  kotlinOptions {
-    jvmTarget = "17"
-  }
+kotlin {
+  jvmToolchain(17)
 }
 
 spotless {
@@ -88,10 +80,14 @@ dependencies {
   implementation("io.vertx:vertx-auth-jwt:$vertxVersion")
   implementation("io.vertx:vertx-redis-client:$vertxVersion")
 
+  implementation("dev.langchain4j:langchain4j-open-ai:1.0.0-beta1")
+  implementation("dev.langchain4j:langchain4j:1.0.0-beta1")
 
   implementation("com.google.inject:guice:5.1.0")
   implementation("org.reflections:reflections:0.10.2")
-  implementation("cn.hutool:hutool-all:5.8.24")
+  implementation("cn.hutool:hutool-core:5.8.24")
+  implementation("cn.hutool:hutool-json:5.8.24")
+  implementation("cn.hutool:hutool-crypto:5.8.24")
   implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
   implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2")
 //  implementation("com.github.ben-manes.caffeine:caffeine:3.1.8")
@@ -103,16 +99,15 @@ dependencies {
   implementation("ch.qos.logback:logback-classic:1.4.14")
   implementation("org.codehaus.janino:janino:3.1.8")
 
-  // jpa
-//  implementation("jakarta.persistence:jakarta.persistence-api:3.2.0")
-//  implementation("jakarta.validation:jakarta.validation-api:3.1.0")
-
   // db
   implementation("org.postgresql:postgresql:42.7.5")
   implementation("com.ongres.scram:client:2.1")
 
   // doc
   implementation("io.swagger.core.v3:swagger-core:2.2.27")
+
+  // XML解析库
+  implementation("javax.xml.bind:jaxb-api:2.3.1")
 
   testImplementation("io.vertx:vertx-junit5")
   testImplementation("org.junit.jupiter:junit-jupiter:$junitJupiterVersion")

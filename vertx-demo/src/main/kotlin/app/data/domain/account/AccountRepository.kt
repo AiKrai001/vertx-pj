@@ -3,7 +3,7 @@ package app.data.domain.account
 import app.data.domain.account.modle.AccountRoleAccessDTO
 import app.data.domain.account.modle.AccountRoleDTO
 import com.google.inject.ImplementedBy
-import org.aikrai.vertx.db.Repository
+import org.aikrai.vertx.db.wrapper.Repository
 
 @ImplementedBy(AccountRepositoryImpl::class)
 interface AccountRepository : Repository<Long, Account> {

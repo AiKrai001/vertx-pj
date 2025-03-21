@@ -1,4 +1,4 @@
-package org.aikrai.vertx.db
+package org.aikrai.vertx.db.wrapper
 
 import cn.hutool.core.util.IdUtil
 import cn.hutool.core.util.StrUtil

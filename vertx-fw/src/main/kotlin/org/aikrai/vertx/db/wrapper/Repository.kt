@@ -1,4 +1,4 @@
-package org.aikrai.vertx.db
+package org.aikrai.vertx.db.wrapper
 
 import kotlin.reflect.KProperty1
 

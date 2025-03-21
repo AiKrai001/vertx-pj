@@ -10,6 +10,7 @@ import java.sql.Timestamp
 class Account : BaseEntity() {
 
   @TableId(type = IdType.ASSIGN_ID)
+  @TableFieldComment("用户ID")
   var userId: Long = 0L
 
   @TableField("user_name")

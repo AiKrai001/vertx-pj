@@ -27,16 +27,8 @@ tasks.test {
   }
 }
 
-tasks.compileKotlin {
-  kotlinOptions {
-    jvmTarget = "17"
-  }
-}
-
-tasks.compileTestKotlin {
-  kotlinOptions {
-    jvmTarget = "17"
-  }
+kotlin {
+  jvmToolchain(17)
 }
 
 spotless {
@@ -55,7 +47,7 @@ spotless {
 }
 
 dependencies {
-//  implementation("org.jetbrains.kotlin:kotlin-reflect:1.9.20")
+  implementation("org.jetbrains.kotlin:kotlin-reflect:1.9.20")
   implementation("io.vertx:vertx-lang-kotlin-coroutines:$vertxVersion")
   implementation("io.vertx:vertx-core:$vertxVersion")
   implementation("io.vertx:vertx-web:$vertxVersion")
