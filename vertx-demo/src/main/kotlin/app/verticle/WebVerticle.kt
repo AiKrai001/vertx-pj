@@ -9,7 +9,6 @@ import app.port.aipfox.ApifoxClient
 import cn.hutool.core.lang.Snowflake
 import com.google.inject.Inject
 import com.google.inject.Injector
-import com.google.inject.name.Named
 import io.vertx.core.Handler
 import io.vertx.core.http.HttpHeaders
 import io.vertx.core.http.HttpMethod
@@ -23,7 +22,7 @@ import io.vertx.kotlin.coroutines.coAwait
 import kotlinx.coroutines.CoroutineScope
 import mu.KotlinLogging
 import org.aikrai.vertx.auth.AuthUser
-import org.aikrai.vertx.config.Config
+import org.aikrai.vertx.config.ServerConfig
 import org.aikrai.vertx.context.RouterBuilder
 import org.aikrai.vertx.jackson.JsonUtil
 import org.aikrai.vertx.utlis.LangUtil.toStringMap
@@ -36,8 +35,7 @@ class WebVerticle @Inject constructor(
   private val apifoxClient: ApifoxClient,
   private val snowflake: Snowflake,
   private val responseHandler: ResponseHandler,
-  @Named("server.port") private val port: Int,
-  @Named("server.context") private val context: String,
+  private val serverConfig: ServerConfig
 ) : CoroutineVerticle() {
   private val logger = KotlinLogging.logger { }
 
@@ -48,30 +46,29 @@ class WebVerticle @Inject constructor(
     val options = HttpServerOptions().setMaxFormAttributeSize(1024 * 1024)
     val server = vertx.createHttpServer(options)
       .requestHandler(rootRouter)
-      .listen(port)
+      .listen(serverConfig.port)
       .coAwait()
 
     apifoxClient.importOpenapi()
 
-    logger.info { "http server start - http://127.0.0.1:${server.actualPort()}/$context" }
+    logger.info { "http server start - http://127.0.0.1:${server.actualPort()}${serverConfig.context}" }
   }
 
   override suspend fun stop() {
   }
 
   private fun setupRouter(rootRouter: Router, router: Router) {
-    rootRouter.route("/api" + "*").subRouter(router)
+    rootRouter.route("${serverConfig.context}*").subRouter(router)
     router.route()
       .handler(corsHandler)
       .handler(BodyHandler.create())
       .handler(logHandler)
       .failureHandler(errorHandler)
 
-    val authHandler = JwtAuthenticationHandler(coroutineScope, tokenService, context, snowflake)
+    val authHandler = JwtAuthenticationHandler(coroutineScope, tokenService, serverConfig.context, snowflake)
     router.route("/*").handler(authHandler)
 
-    val scanPath = Config.getKeyAsString("server.package")
-    val routerBuilder = RouterBuilder(coroutineScope, router, scanPath, responseHandler).build { service ->
+    val routerBuilder = RouterBuilder(coroutineScope, router, serverConfig.scanPackage, responseHandler).build { service ->
       getIt.getInstance(service)
     }
     authHandler.anonymous.addAll(routerBuilder.anonymousPaths)

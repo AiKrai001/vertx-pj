@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration
   debug="false" scan="true" scanPeriod="30 second">
-  <property name="ROOT" value="./log/"/>
+  <property name="ROOT" value="./logs/"/>
   <property name="APPNAME" value="vertx-demo"/>
   <property name="FILESIZE" value="500MB"/>
   <property name="MAXHISTORY" value="100"/>

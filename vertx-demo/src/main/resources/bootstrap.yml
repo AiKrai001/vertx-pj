@@ -1,15 +1,5 @@
 server:
    name: vtx_demo
-   context: api # 上下文
-   timeout: 120 # eventbus超时时间
-   http:
-      header: # header获取到的变量
-      - x-requested-with
-      - Access-Control-Allow-Origin
-      - origin
-      - Content-Type
-      - accept
-   event-bus:
-      timeout: 10000 # 毫秒
-jwt:
-  key: 123456sdfjasdfjl # jwt加密key
+   context: /api
+#   active: dev
+   package: app

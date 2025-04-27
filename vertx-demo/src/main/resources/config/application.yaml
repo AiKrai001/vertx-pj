@@ -1,0 +1,18 @@
+application:
+  version: 1.0.0
+
+server:
+   http:
+      header: # header获取到的变量
+      - x-requested-with
+      - Access-Control-Allow-Origin
+      - origin
+      - Content-Type
+      - accept
+   event-bus:
+      timeout: 10000 # 毫秒
+
+jwt:
+  key: 123456sdfjasdfjl
+  algorithm: HS256
+  expiresInSeconds: 604800 # 7天

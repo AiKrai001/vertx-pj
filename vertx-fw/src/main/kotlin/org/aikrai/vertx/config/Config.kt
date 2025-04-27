@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 object Config {
   private val retriever = AtomicReference<ConfigRetriever?>(null)
-  private var configMap = emptyMap<String, Any>()
+  private val configMapRef = AtomicReference<Map<String, Any>>(emptyMap())
 
   suspend fun init(vertx: Vertx) {
     if (retriever.get() != null) return
@@ -20,38 +20,71 @@ object Config {
     val cas = retriever.compareAndSet(null, configRetriever)
     if (cas) {
       val configObj = configRetriever.config.coAwait()
-      configMap = FlattenUtil.flattenJsonObject(configObj)
+      // 存储扁平化的 Map
+      configMapRef.set(FlattenUtil.flattenJsonObject(configObj))
     }
   }
 
-  fun getKey(key: String): Any? {
-    if (retriever.get() == null) throw IllegalStateException("Config not initialized")
-    // 检查 configMap 中是否存在指定的 key
-    return if (configMap.containsKey(key)) {
-      configMap[key]
-    } else {
-      // 找到所有以 key 开头的条目
-      val map = configMap.filterKeys { it.startsWith(key) }
-      // 如果没有找到任何匹配的条目，返回 null
-      return map.ifEmpty { null }
-    }
+  fun getString(key: String, defaultValue: String): String {
+    return configMapRef.get()[key]?.toString() ?: defaultValue
   }
 
-  fun getKeyAsString(key: String): String? {
-    if (retriever.get() == null) throw IllegalStateException("Config not initialized")
-    // 检查 configMap 中是否存在指定的 key
-    return if (configMap.containsKey(key)) {
-      configMap[key].toString()
-    } else {
-      // 找到所有以 key 开头的条目
-      val map = configMap.filterKeys { it.startsWith(key) }
-      // 如果没有找到任何匹配的条目，返回 null
-      if (map.isEmpty()) return null else map.toString()
-    }
+  fun getStringOrNull(key: String): String? {
+    return configMapRef.get()[key]?.toString()
+  }
+
+  fun getInt(key: String, defaultValue: Int): Int {
+    return configMapRef.get()[key]?.toString()?.toIntOrNull() ?: defaultValue
+  }
+
+  fun getIntOrNull(key: String): Int? {
+    return configMapRef.get()[key]?.toString()?.toIntOrNull()
+  }
+
+  fun getLong(key: String, defaultValue: Long): Long {
+    return configMapRef.get()[key]?.toString()?.toLongOrNull() ?: defaultValue
+  }
+
+  fun getLongOrNull(key: String): Long? {
+    return configMapRef.get()[key]?.toString()?.toLongOrNull()
+  }
+
+  fun getBoolean(key: String, defaultValue: Boolean): Boolean {
+     val value = configMapRef.get()[key]
+     return when (value) {
+         is Boolean -> value
+         is String -> value.toBooleanStrictOrNull() ?: defaultValue // toBooleanStrictOrNull 更安全
+         else -> defaultValue
+     }
+  }
+
+  fun getBooleanOrNull(key: String): Boolean? {
+     val value = configMapRef.get()[key]
+     return when (value) {
+         is Boolean -> value
+         is String -> value.toBooleanStrictOrNull()
+         else -> null
+     }
+  }
+
+  // 获取嵌套对象或列表
+  fun getObject(keyPrefix: String): Map<String, Any>? {
+     val map = configMapRef.get()
+     val subMap = map.filterKeys { it.startsWith("$keyPrefix.") }
+         .mapKeys { it.key.removePrefix("$keyPrefix.") }
+     return if (subMap.isEmpty()) null else subMap
+  }
+
+  fun getStringList(key: String, defaultValue: List<String> = emptyList()): List<String> {
+    return (configMapRef.get()[key] as? JsonArray)?.mapNotNull { it?.toString() } ?: defaultValue
+  }
+
+  fun getStringListOrNull(key: String): List<String>? {
+     return (configMapRef.get()[key] as? JsonArray)?.mapNotNull { it?.toString() }
   }
 
   fun getConfigMap(): Map<String, Any> {
-    return configMap
+    return configMapRef.get()
   }
 
   private suspend fun load(vertx: Vertx): ConfigRetriever {

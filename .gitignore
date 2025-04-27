@@ -5,7 +5,8 @@ build/
 !**/src/test/**/build/
 /config
 /gradle
-log/
+/logs
+/.cursor
 
 ### IntelliJ IDEA ###
 .idea

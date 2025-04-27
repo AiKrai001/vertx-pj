@@ -59,7 +59,7 @@ class Demo1Controller @Inject constructor(
   suspend fun testRetriever(
     @D("key", "key") key: String
   ) {
-    val configMap = Config.getKey(key)
+    val configMap = Config.getStringOrNull(key)
     println(configMap)
   }
 }

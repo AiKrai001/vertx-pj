@@ -2,23 +2,24 @@ package app.port.aipfox
 
 import app.util.openapi.OpenApiSpecGenerator
 import com.google.inject.Inject
-import com.google.inject.name.Named
 import io.vertx.core.Vertx
 import io.vertx.core.http.HttpMethod
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.client.WebClient
 import io.vertx.ext.web.client.WebClientOptions
 import mu.KotlinLogging
+import org.aikrai.vertx.config.Config
 
 class ApifoxClient @Inject constructor(
   private val vertx: Vertx,
-  @Named("apifox.token") private val token: String,
-  @Named("apifox.projectId") private val projectId: String,
-  @Named("apifox.folderId") private val folderId: String,
-  @Named("server.name") private val serverName: String,
-  @Named("server.port") private val port: String
 ) {
   private val logger = KotlinLogging.logger { }
+
+  private val token = Config.getString("apifox.token", "")
+  private val projectId = Config.getString("apifox.projectId", "")
+  private val folderId = Config.getString("apifox.folderId", "")
+  private val serverName = Config.getString("server.name", "")
+  private val port = Config.getString("server.port", "")
 
   fun importOpenapi() {
     val openApiJsonStr = OpenApiSpecGenerator().genOpenApiSpecStr(serverName, "1.0", "http://127.0.0.1:$port/api")

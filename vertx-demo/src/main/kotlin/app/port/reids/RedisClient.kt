@@ -6,28 +6,23 @@ import io.vertx.core.Vertx
 import io.vertx.kotlin.coroutines.coAwait
 import io.vertx.redis.client.*
 import mu.KotlinLogging
-import org.aikrai.vertx.config.Config
+import org.aikrai.vertx.config.RedisConfig
 
 @Singleton
 class RedisClient @Inject constructor(
-  vertx: Vertx
+  vertx: Vertx,
+  redisConfig: RedisConfig
 ) {
   private val logger = KotlinLogging.logger { }
-  private val host = Config.getKey("redis.host").toString()
-  private val port = Config.getKey("redis.port").toString()
-  private val database = Config.getKey("redis.database").toString().toInt()
-  private val password = Config.getKey("redis.password").toString()
-  private val maxPoolSize = Config.getKey("redis.maxPoolSize").toString().toInt()
-  private val maxPoolWaiting = Config.getKey("redis.maxPoolWaiting").toString().toInt()
-
+  
   private var redisClient = Redis.createClient(
     vertx,
     RedisOptions()
       .setType(RedisClientType.STANDALONE)
-      .addConnectionString("redis://$host:$port/$database")
-      .setPassword(password)
-      .setMaxPoolSize(maxPoolSize)
-      .setMaxPoolWaiting(maxPoolWaiting)
+      .addConnectionString("redis://${redisConfig.host}:${redisConfig.port}/${redisConfig.db}")
+      .setPassword(redisConfig.pass ?: "")
+      .setMaxPoolSize(redisConfig.poolSize)
+      .setMaxPoolWaiting(redisConfig.maxPoolWaiting)
   )
 
   // EX秒，PX毫秒

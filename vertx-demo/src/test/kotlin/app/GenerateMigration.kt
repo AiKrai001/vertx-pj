@@ -3,7 +3,6 @@ package app
 import org.aikrai.vertx.db.annotation.TableField
 import org.aikrai.vertx.db.annotation.TableId
 import org.aikrai.vertx.db.annotation.TableName
-import org.aikrai.vertx.db.annotation.TableIndex
 import org.aikrai.vertx.db.annotation.EnumValue
 import org.aikrai.vertx.db.annotation.TableFieldComment
 import org.aikrai.vertx.db.migration.AnnotationMapping
@@ -98,10 +97,10 @@ object GenerateMigration {
     )
     
     // 设置索引映射
-    mapper.indexMapping = AnnotationMapping(
-      annotationClass = TableIndex::class,
-      propertyName = "name"
-    )
+//    mapper.indexMapping = AnnotationMapping(
+//      annotationClass = TableIndex::class,
+//      propertyName = "name"
+//    )
     
     // 设置枚举值映射
     mapper.enumValueMapping = AnnotationMapping(
