@@ -1,7 +1,7 @@
 package app.config
 
-import app.config.auth.JWTAuthProvider
-import app.config.db.DbPoolProvider
+import app.config.provider.JWTAuthProvider
+import app.config.provider.DbPoolProvider
 import cn.hutool.core.lang.Snowflake
 import cn.hutool.core.util.IdUtil
 import com.google.inject.AbstractModule
@@ -15,32 +15,40 @@ import io.vertx.sqlclient.SqlClient
 import kotlinx.coroutines.CoroutineScope
 import org.aikrai.vertx.config.DefaultScope
 import org.aikrai.vertx.config.FrameworkConfigModule
+import org.aikrai.vertx.http.GlobalErrorHandler
+import org.aikrai.vertx.http.RequestLogHandler
 
+/**
+ * 依赖注入配置
+ */
 object InjectConfig {
   fun configure(vertx: Vertx): Injector {
     return Guice.createInjector(InjectorModule(vertx))
   }
 }
 
+/**
+ * Guice模块配置
+ */
 class InjectorModule(
   private val vertx: Vertx,
 ) : AbstractModule() {
   override fun configure() {
-    // 1. 安装框架提供的配置模块
     install(FrameworkConfigModule())
 
-    // 2. 绑定 Vertx 实例和 CoroutineScope
     bind(Vertx::class.java).toInstance(vertx)
     bind(CoroutineScope::class.java).toInstance(DefaultScope(vertx))
 
-    // 3. 绑定 Snowflake
     bind(Snowflake::class.java).toInstance(IdUtil.getSnowflake())
 
-    // 4. 绑定数据库连接池 (使用 Provider 来延迟创建)
     bind(Pool::class.java).toProvider(DbPoolProvider::class.java).`in`(Singleton::class.java)
-    bind(SqlClient::class.java).to(Pool::class.java) // 绑定 SqlClient 到 Pool
+    bind(SqlClient::class.java).to(Pool::class.java)
 
     // 5. 绑定 JWTAuth
     bind(JWTAuth::class.java).toProvider(JWTAuthProvider::class.java).`in`(Singleton::class.java)
+    
+    // 6. 绑定错误处理和日志组件
+    bind(GlobalErrorHandler::class.java).`in`(Singleton::class.java)
+    bind(RequestLogHandler::class.java).`in`(Singleton::class.java)
   }
 }

@@ -10,10 +10,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.aikrai.vertx.auth.*
 import org.aikrai.vertx.auth.AuthUser.Companion.validateAuth
-import org.aikrai.vertx.config.resp.DefaultResponseHandler
-import org.aikrai.vertx.config.resp.ResponseHandlerInterface
 import org.aikrai.vertx.db.annotation.EnumValue
 import org.aikrai.vertx.jackson.JsonUtil
+import org.aikrai.vertx.resp.DefaultResponseHandler
+import org.aikrai.vertx.resp.ResponseHandlerInterface
 import org.aikrai.vertx.utlis.ClassUtil
 import org.aikrai.vertx.utlis.Meta
 import org.reflections.Reflections
@@ -214,9 +214,10 @@ class RouterBuilder(
         } else {
           routeInfo.kFunction.call(instance, *params)
         }
-        responseHandler.normal(ctx, result, routeInfo.customizeResp)
+        responseHandler.handle(ctx, result, routeInfo.customizeResp)
       } catch (e: Throwable) {
-        responseHandler.exception(ctx, e)
+        // 异常冒泡到全局错误处理器
+        ctx.fail(e)
       }
     }
   }

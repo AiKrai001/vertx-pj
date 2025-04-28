@@ -1,8 +1,7 @@
-package app.config.auth
+package app.service.auth
 
 import app.data.domain.account.AccountRepository
 import app.port.reids.RedisClient
-import cn.hutool.core.lang.Snowflake
 import cn.hutool.core.util.IdUtil
 import com.google.inject.Inject
 import com.google.inject.Singleton
@@ -23,7 +22,6 @@ import org.aikrai.vertx.utlis.Meta
 
 @Singleton
 class TokenService @Inject constructor(
-  private val snowflake: Snowflake,
   private val jwtAuth: JWTAuth,
   private val redisClient: RedisClient,
   private val accountRepository: AccountRepository,
@@ -54,8 +52,6 @@ class TokenService @Inject constructor(
     return genToken(mapOf(Constants.LOGIN_USER_KEY to token))
   }
 
-  suspend fun verifyToken(loginUser: AuthUser) {
-  }
 
   private fun genToken(info: Map<String, Any>, expires: Int? = null): String {
     val jwtOptions = JWTOptions().setExpiresInSeconds(expires ?: (60 * 60 * 24 * 7))

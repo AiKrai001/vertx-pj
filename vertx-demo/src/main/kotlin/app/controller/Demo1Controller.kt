@@ -10,6 +10,7 @@ import org.aikrai.vertx.auth.AllowAnonymous
 import org.aikrai.vertx.config.Config
 import org.aikrai.vertx.context.Controller
 import org.aikrai.vertx.context.D
+import org.aikrai.vertx.utlis.Meta
 
 /**
  * 推荐代码示例
@@ -32,6 +33,7 @@ class Demo1Controller @Inject constructor(
     @D("account", "账号") account: Account?
   ) {
     logger.info { "你好" }
+    throw Meta.error("test", "test")
     println(age)
     println(list)
     println("test-$name")

@@ -72,7 +72,7 @@ object Config {
      val map = configMapRef.get()
      val subMap = map.filterKeys { it.startsWith("$keyPrefix.") }
          .mapKeys { it.key.removePrefix("$keyPrefix.") }
-     return if (subMap.isEmpty()) null else subMap
+     return subMap.ifEmpty { null }
   }
 
   fun getStringList(key: String, defaultValue: List<String> = emptyList()): List<String> {

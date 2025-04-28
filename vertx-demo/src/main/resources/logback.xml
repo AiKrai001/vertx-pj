@@ -6,6 +6,10 @@
   <property name="FILESIZE" value="500MB"/>
   <property name="MAXHISTORY" value="100"/>
 
+  <!-- 定义MDC变量，如果不存在则为空字符串 -->
+  <property name="mdcPattern" value="requestId=%X{requestId:-N/A} userId=%X{userId:-anon} ip=%X{remoteAddr:-} method=%X{method:-} path=%X{path:-} status=%X{statusCode:-} time=%X{duration:-}ms" />
+
+  <!-- 控制台输出 -->
   <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
     <Target>System.out</Target>
     <encoder charset="utf-8">
@@ -14,15 +18,14 @@
     </encoder>
   </appender>
 
+  <!-- 警告级别日志 -->
   <appender name="WARN" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <file>${ROOT}${APPNAME}-warn.log</file>
     <encoder charset="utf-8">
-      <pattern>[%-5level] %d [%thread] %class{36}.%M:%L - %m%n
-      </pattern>
+      <pattern>[%-5level] %d{ISO8601} [%thread] %logger{36} [${mdcPattern}] - %m%n</pattern>
     </encoder>
-    <filter class="ch.qos.logback.core.filter.EvaluatorFilter">
-      <evaluator>
-        <expression>return level &gt;= WARN;</expression>
-      </evaluator>
+    <filter class="ch.qos.logback.classic.filter.LevelFilter">
+      <level>WARN</level>
       <onMatch>ACCEPT</onMatch>
       <onMismatch>DENY</onMismatch>
     </filter>
@@ -36,15 +39,14 @@
     </rollingPolicy>
   </appender>
 
+  <!-- 信息级别日志 -->
   <appender name="INFO" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <file>${ROOT}${APPNAME}-info.log</file>
     <encoder charset="utf-8">
-      <pattern>[%-5level] %d [%thread] %class{36}.%M:%L - %m%n
-      </pattern>
+      <pattern>[%-5level] %d{ISO8601} [%thread] %logger{36} [${mdcPattern}] - %m%n</pattern>
     </encoder>
     <filter class="ch.qos.logback.classic.filter.LevelFilter">
-      <evaluator>
-        <expression>return level &gt;= INFO;</expression>
-      </evaluator>
+      <level>INFO</level>
       <onMatch>ACCEPT</onMatch>
       <onMismatch>DENY</onMismatch>
     </filter>
@@ -58,21 +60,21 @@
     </rollingPolicy>
   </appender>
 
+  <!-- 调试级别日志 -->
   <appender name="DEBUG" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <file>${ROOT}${APPNAME}-debug.log</file>
     <encoder charset="utf-8">
       <pattern>[%-5level] %d [%thread] %class{36}.%M:%L - %m%n
       </pattern>
     </encoder>
     <filter class="ch.qos.logback.classic.filter.LevelFilter">
-      <evaluator>
-        <expression>return level &gt;= DEBUG;</expression>
-      </evaluator>
+      <level>DEBUG</level>
       <onMatch>ACCEPT</onMatch>
       <onMismatch>DENY</onMismatch>
     </filter>
     <rollingPolicy
             class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-      <fileNamePattern>${ROOT}${APPNAME}-%d-info.%i.log</fileNamePattern>
+      <fileNamePattern>${ROOT}${APPNAME}-%d-debug.%i.log</fileNamePattern>
       <maxHistory>${MAXHISTORY}</maxHistory>
       <timeBasedFileNamingAndTriggeringPolicy
               class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
@@ -81,21 +83,21 @@
     </rollingPolicy>
   </appender>
 
+  <!-- 跟踪级别日志 -->
   <appender name="TRACE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <file>${ROOT}${APPNAME}-trace.log</file>
     <encoder charset="utf-8">
       <pattern>[%-5level] %d [%thread] %class{36}.%M:%L - %m%n
       </pattern>
     </encoder>
     <filter class="ch.qos.logback.classic.filter.LevelFilter">
-      <evaluator>
-        <expression>return level &gt;= TRACE;</expression>
-      </evaluator>
+      <level>TRACE</level>
       <onMatch>ACCEPT</onMatch>
       <onMismatch>DENY</onMismatch>
     </filter>
     <rollingPolicy
             class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-      <fileNamePattern>${ROOT}${APPNAME}-%d-info.%i.log</fileNamePattern>
+      <fileNamePattern>${ROOT}${APPNAME}-%d-trace.%i.log</fileNamePattern>
       <maxHistory>${MAXHISTORY}</maxHistory>
       <timeBasedFileNamingAndTriggeringPolicy
               class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
@@ -104,11 +106,67 @@
     </rollingPolicy>
   </appender>
 
-  <root level="DEBUG">
+  <!-- JSON格式日志（所有级别） -->
+  <appender name="JSON_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <file>${ROOT}${APPNAME}-json.log</file>
+    <!-- 使用 logstash-logback-encoder，需要添加相应依赖 -->
+    <!-- 如果不想使用 logstash-logback-encoder，可以注释掉这个appender或者使用自定义JSON格式 -->
+    <!--
+    <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+      <includeMdc>true</includeMdc>
+      <customFields>{"application":"${APPNAME}"}</customFields>
+    </encoder>
+    -->
+    <!-- 简单的JSON格式输出，不依赖额外库 -->
+    <encoder charset="utf-8">
+      <pattern>{"time":"%d{ISO8601}","level":"%level","thread":"%thread","logger":"%logger","mdc":{%mdc},"message":"%message"}%n</pattern>
+    </encoder>
+    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      <fileNamePattern>${ROOT}${APPNAME}-%d-json.%i.log</fileNamePattern>
+      <maxHistory>${MAXHISTORY}</maxHistory>
+      <timeBasedFileNamingAndTriggeringPolicy
+              class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+        <maxFileSize>${FILESIZE}</maxFileSize>
+      </timeBasedFileNamingAndTriggeringPolicy>
+    </rollingPolicy>
+  </appender>
+
+  <!-- 错误级别日志 -->
+  <appender name="ERROR" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <!-- 添加缺少的file属性 -->
+    <file>${ROOT}${APPNAME}-error.log</file>
+    <encoder charset="utf-8">
+      <pattern>[%-5level] %d{ISO8601} [%thread] %logger{36} [${mdcPattern}] - %m%n</pattern>
+    </encoder>
+    <filter class="ch.qos.logback.classic.filter.LevelFilter">
+      <level>ERROR</level>
+      <onMatch>ACCEPT</onMatch>
+      <onMismatch>DENY</onMismatch>
+    </filter>
+    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      <fileNamePattern>${ROOT}${APPNAME}-%d-error.%i.log</fileNamePattern>
+      <maxHistory>${MAXHISTORY}</maxHistory>
+      <timeBasedFileNamingAndTriggeringPolicy
+              class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+        <maxFileSize>${FILESIZE}</maxFileSize>
+      </timeBasedFileNamingAndTriggeringPolicy>
+    </rollingPolicy>
+  </appender>
+
+  <!-- 根Logger配置 -->
+  <root level="INFO">
     <appender-ref ref="STDOUT"/>
+    <appender-ref ref="ERROR"/>
     <appender-ref ref="WARN"/>
     <appender-ref ref="INFO"/>
     <appender-ref ref="DEBUG"/>
     <appender-ref ref="TRACE"/>
+    <appender-ref ref="JSON_FILE"/>
   </root>
+
+  <!-- 可选：为特定包设置日志级别 -->
+  <!--
+  <logger name="app" level="DEBUG"/>
+  <logger name="org.aikrai.vertx" level="DEBUG"/>
+  -->
 </configuration>

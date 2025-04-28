@@ -11,10 +11,6 @@ import com.google.inject.Singleton
  */
 class FrameworkConfigModule : AbstractModule() {
 
-    override fun configure() {
-        // 这里不需要bind(Config::class.java)，因为Config是object
-    }
-
     @Provides
     @Singleton
     fun provideDatabaseConfig(): DatabaseConfig {
