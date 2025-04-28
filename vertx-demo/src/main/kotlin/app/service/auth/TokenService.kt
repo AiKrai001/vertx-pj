@@ -13,7 +13,7 @@ import io.vertx.ext.auth.authentication.TokenCredentials
 import io.vertx.ext.auth.jwt.JWTAuth
 import io.vertx.ext.web.RoutingContext
 import io.vertx.kotlin.coroutines.coAwait
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.aikrai.vertx.auth.AuthUser
 import org.aikrai.vertx.constant.CacheConstants
 import org.aikrai.vertx.constant.Constants

@@ -5,7 +5,7 @@ import app.data.domain.account.AccountRepository
 import app.data.emun.Status
 import app.service.account.AccountService
 import com.google.inject.Inject
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.aikrai.vertx.auth.AllowAnonymous
 import org.aikrai.vertx.config.Config
 import org.aikrai.vertx.context.Controller

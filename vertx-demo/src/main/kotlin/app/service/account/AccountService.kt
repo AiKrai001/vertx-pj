@@ -8,7 +8,7 @@ import cn.hutool.core.lang.Snowflake
 import cn.hutool.crypto.SecureUtil
 import com.google.inject.Inject
 import io.vertx.ext.web.RoutingContext
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.aikrai.vertx.db.tx.withTransaction
 import org.aikrai.vertx.utlis.IpUtil
 import org.aikrai.vertx.utlis.Meta

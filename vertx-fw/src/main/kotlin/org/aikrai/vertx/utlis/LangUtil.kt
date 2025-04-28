@@ -1,7 +1,7 @@
 package org.aikrai.vertx.utlis
 
 import io.vertx.core.MultiMap
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import java.sql.Timestamp
 import java.time.Instant
 import java.time.OffsetDateTime

@@ -4,7 +4,7 @@ import io.vertx.kotlin.coroutines.coAwait
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.SqlClient
 import io.vertx.sqlclient.templates.SqlTemplate
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.aikrai.vertx.jackson.JsonUtil
 import org.aikrai.vertx.utlis.Meta
 import java.util.concurrent.ConcurrentHashMap

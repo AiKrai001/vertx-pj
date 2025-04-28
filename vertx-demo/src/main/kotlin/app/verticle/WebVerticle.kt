@@ -13,7 +13,7 @@ import io.vertx.ext.web.handler.CorsHandler
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.coAwait
 import kotlinx.coroutines.CoroutineScope
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.aikrai.vertx.config.ServerConfig
 import org.aikrai.vertx.context.RouterBuilder
 import org.aikrai.vertx.http.GlobalErrorHandler

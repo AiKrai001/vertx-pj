@@ -7,7 +7,7 @@ import com.fasterxml.jackson.databind.type.TypeFactory
 import io.vertx.kotlin.coroutines.coAwait
 import io.vertx.sqlclient.*
 import io.vertx.sqlclient.templates.SqlTemplate
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.aikrai.vertx.db.annotation.*
 import org.aikrai.vertx.db.tx.TxCtxElem
 import org.aikrai.vertx.jackson.JsonUtil

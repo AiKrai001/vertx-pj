@@ -7,7 +7,7 @@ import io.vertx.core.http.HttpHeaders
 import io.vertx.core.http.HttpMethod
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.RoutingContext
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.aikrai.vertx.jackson.JsonUtil
 import org.aikrai.vertx.utlis.IpUtil
 import org.slf4j.MDC

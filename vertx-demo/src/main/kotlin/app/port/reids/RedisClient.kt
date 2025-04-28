@@ -5,7 +5,7 @@ import com.google.inject.Singleton
 import io.vertx.core.Vertx
 import io.vertx.kotlin.coroutines.coAwait
 import io.vertx.redis.client.*
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.aikrai.vertx.config.RedisConfig
 
 @Singleton

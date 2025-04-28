@@ -2,7 +2,7 @@ package app.verticle
 
 import com.google.inject.Inject
 import io.vertx.kotlin.coroutines.CoroutineVerticle
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 
 class MainVerticle @Inject constructor(
   private val webVerticle: WebVerticle,

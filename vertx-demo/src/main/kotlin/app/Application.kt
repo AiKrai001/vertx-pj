@@ -2,9 +2,9 @@ package app
 
 import app.config.InjectConfig
 import app.verticle.MainVerticle
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.vertx.core.Vertx
 import kotlinx.coroutines.runBlocking
-import mu.KotlinLogging
 import org.aikrai.vertx.config.Config
 
 object Application {

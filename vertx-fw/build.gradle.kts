@@ -2,12 +2,13 @@ plugins {
   kotlin("jvm") version "1.9.20"
   id("com.diffplug.spotless") version "6.25.0"
   id("com.github.johnrengelman.shadow") version "8.1.1"
+  `java-library`
 }
 
 group = "org.aikrai"
 version = "1.0.0-SNAPSHOT"
 
-val vertxVersion = "4.5.11"
+val vertxVersion = "4.5.14"
 
 repositories {
   mavenLocal()
@@ -47,29 +48,28 @@ spotless {
 }
 
 dependencies {
-  implementation("org.jetbrains.kotlin:kotlin-reflect:1.9.20")
-  implementation("io.vertx:vertx-lang-kotlin-coroutines:$vertxVersion")
-  implementation("io.vertx:vertx-core:$vertxVersion")
-  implementation("io.vertx:vertx-web:$vertxVersion")
-  implementation("io.vertx:vertx-config:$vertxVersion")
-  implementation("io.vertx:vertx-config-yaml:$vertxVersion")
-  implementation("io.vertx:vertx-sql-client-templates:$vertxVersion")
-  implementation("io.vertx:vertx-auth-jwt:$vertxVersion")
+  api("org.jetbrains.kotlin:kotlin-reflect:1.9.20")
+  api("io.vertx:vertx-lang-kotlin-coroutines:$vertxVersion")
+  api("io.vertx:vertx-core:$vertxVersion")
+  api("io.vertx:vertx-web:$vertxVersion")
+  api("io.vertx:vertx-config:$vertxVersion")
+  api("io.vertx:vertx-config-yaml:$vertxVersion")
+  api("io.vertx:vertx-sql-client-templates:$vertxVersion")
+  api("io.vertx:vertx-auth-jwt:$vertxVersion")
 
-  implementation("com.google.inject:guice:7.0.0")
-  implementation("org.reflections:reflections:0.10.2")
-  implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
-  implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2")
+  api("com.google.inject:guice:7.0.0")
+  api("org.reflections:reflections:0.10.2")
+  api("com.fasterxml.jackson.core:jackson-databind:2.15.2")
+  api("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2")
 
   // hutool
-  implementation("cn.hutool:hutool-core:5.8.35")
+  api("cn.hutool:hutool-core:5.8.35")
 
   // log
-  implementation("io.github.microutils:kotlin-logging-jvm:3.0.5")
-  implementation("org.slf4j:slf4j-api:2.0.6")
-  implementation("ch.qos.logback:logback-classic:1.4.14")
-  implementation("org.codehaus.janino:janino:3.1.8")
+  implementation("io.github.oshai:kotlin-logging-jvm:7.0.3")
+  implementation("org.slf4j:slf4j-api:2.0.17")
+  implementation("ch.qos.logback:logback-classic:1.5.18")
 
   // doc
-  implementation("io.swagger.core.v3:swagger-core:2.2.27")
+  api("io.swagger.core.v3:swagger-core:2.2.27")
 }

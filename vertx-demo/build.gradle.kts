@@ -8,7 +8,7 @@ plugins {
 group = "com.demo"
 version = "1.0.0-SNAPSHOT"
 
-val vertxVersion = "4.5.11"
+val vertxVersion = "4.5.14"
 val junitJupiterVersion = "5.9.1"
 
 application {
@@ -67,44 +67,34 @@ dependencies {
 //    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
   implementation(platform("io.vertx:vertx-stack-depchain:$vertxVersion"))
   implementation(kotlin("stdlib-jdk8"))
+  
+  // 特定于vertx-demo的依赖，保留
   implementation("io.vertx:vertx-lang-kotlin:$vertxVersion")
-  implementation("io.vertx:vertx-lang-kotlin-coroutines:$vertxVersion")
-  implementation("io.vertx:vertx-core:$vertxVersion")
-  implementation("io.vertx:vertx-web:$vertxVersion")
   implementation("io.vertx:vertx-web-client:$vertxVersion")
-  implementation("io.vertx:vertx-config:$vertxVersion")
-  implementation("io.vertx:vertx-config-yaml:$vertxVersion")
   implementation("io.vertx:vertx-pg-client:$vertxVersion")
   implementation("io.vertx:vertx-mysql-client:$vertxVersion")
-  implementation("io.vertx:vertx-sql-client-templates:$vertxVersion")
-  implementation("io.vertx:vertx-auth-jwt:$vertxVersion")
   implementation("io.vertx:vertx-redis-client:$vertxVersion")
 
   implementation("dev.langchain4j:langchain4j-open-ai:1.0.0-beta1")
   implementation("dev.langchain4j:langchain4j:1.0.0-beta1")
 
-  implementation("com.google.inject:guice:5.1.0")
-  implementation("org.reflections:reflections:0.10.2")
-  implementation("cn.hutool:hutool-core:5.8.24")
+  // hutool
   implementation("cn.hutool:hutool-json:5.8.24")
   implementation("cn.hutool:hutool-crypto:5.8.24")
-  implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
-  implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2")
-//  implementation("com.github.ben-manes.caffeine:caffeine:3.1.8")
+  
   implementation("dev.hsbrysk:caffeine-coroutines:1.0.0")
 
   // log
-  implementation("io.github.microutils:kotlin-logging-jvm:3.0.5")
-  implementation("org.slf4j:slf4j-api:2.0.6")
-  implementation("ch.qos.logback:logback-classic:1.4.14")
-  implementation("org.codehaus.janino:janino:3.1.8")
+  implementation("io.github.oshai:kotlin-logging-jvm:7.0.3")
+  implementation("org.slf4j:slf4j-api:2.0.17")
+  implementation("ch.qos.logback:logback-classic:1.5.18")
 
   // db
   implementation("org.postgresql:postgresql:42.7.5")
   implementation("com.ongres.scram:client:2.1")
 
   // doc
-  implementation("io.swagger.core.v3:swagger-core:2.2.27")
+  // implementation("io.swagger.core.v3:swagger-core:2.2.27")
 
   // XML解析库
   implementation("javax.xml.bind:jaxb-api:2.3.1")

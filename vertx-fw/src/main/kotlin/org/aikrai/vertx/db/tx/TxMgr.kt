@@ -6,7 +6,7 @@ import io.vertx.sqlclient.SqlConnection
 import io.vertx.sqlclient.Transaction
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.withContext
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.aikrai.vertx.utlis.Meta
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap

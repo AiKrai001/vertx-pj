@@ -4,7 +4,7 @@ import com.google.inject.Singleton
 import io.vertx.core.Handler
 import io.vertx.core.http.HttpHeaders
 import io.vertx.ext.web.RoutingContext
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.aikrai.vertx.constant.HttpStatus
 import org.aikrai.vertx.jackson.JsonUtil
 import org.aikrai.vertx.utlis.Meta
