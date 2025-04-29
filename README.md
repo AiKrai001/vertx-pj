@@ -1,210 +1,231 @@
-# Vertx-pj 说明
+# Vert.x 快速开发模板
 
-基于vert.x的web开发框架，提供了一些简单的封装，使得开发更加便捷。<br/>
-**写的简单，问题不少，仅供参考**。
-- **vertx-fw**: 简单封装的web开发框架
-- **vertx-demo**: 使用vertx-fw开发的demo
+这是一个基于 Vert.x 库的后端快速开发模板，采用 Kotlin 语言和协程实现高性能异步编程。本项目提供了完整的开发框架，能够帮助开发者快速搭建响应式、模块化、高性能的后端服务。
 
-### 项目介绍
+## 技术栈
 
-#### 技术栈
-- **框架**: Vert.x 4.x (响应式异步框架)
-- **语言**: Kotlin + 协程
-- **数据库**: PostgreSQL + Vert.x PgClient
-- **DI**: Google Guice
-- **认证**: JWT + 角色权限体系
-- **工具库**: Hutool(工具包)、mu(日志)、jackson(序列化)
-- **文档**: OpenAPI 3.0 + Apifox集成
+- **核心框架**: Vert.x 4.5.x (响应式、事件驱动框架)
+- **编程语言**: Kotlin 1.9.x (协程支持)
+- **依赖注入**: Google Guice 7.0.0
+- **数据库**: PostgreSQL (主), MySQL (可选)
+- **缓存**: Redis
+- **认证**: JWT
+- **构建工具**: Gradle with Kotlin DSL
+- **代码规范**: Spotless, ktlint
 
-#### 设计
-```
-├── Application (入口)
-├── Verticles
-│   ├── MainVerticle (主部署器)
-│   └── WebVerticle (WEB服务)
-├── Config
-│   ├── JWT认证
-│   └── 依赖注入配置
-├── Controller (接口层)
-├── Service (业务层)
-├── Repository (数据层)
-└── Domain (领域模型)
-```
+## 项目结构
 
-#### 核心特性
-1. **全异步架构**：基于Vert.x事件循环和Kotlin协程
-2. **自动路由注册**：通过注解自动映射REST接口
-3. **声明式事务**：通过withTransaction函数管理事务
-4. **RBAC权限控制**：支持角色+权限双重验证
-5. **智能参数解析**：自动处理路径/查询/表单/JSON参数
-6. **全链路日志**：包含请求ID、用户上下文、耗时预警
-7. **代码生成**：Repository自动生成基础SQL
+项目采用模块化设计，主要分为两个模块：
 
----
+### vertx-fw (框架核心)
 
-### 使用说明
+提供基础架构和通用功能:
 
-#### 1. 快速启动
+- 依赖注入配置
+- 路由管理
+- 认证与授权
+- 数据库操作封装
+- 事务管理
+- 全局异常处理
+- 通用工具类
+
+### vertx-demo (应用示例)
+
+包含示例应用代码:
+
+- 控制器实现示例
+- 服务层实现
+- 数据访问层
+- 实体类定义
+- 配置文件
+
+## 主要特性
+
+### 1. 注解驱动的路由
+
+通过简单的注解即可定义 API 路由和参数绑定:
+
 ```kotlin
-// 配置application.yaml
-server:
-  name: vtx_demo
-  port: 8080
-  context: api
-  package: app
+@D("测试1:测试")
+@Controller
+class Demo1Controller @Inject constructor(
+  private val accountService: AccountService,
+  private val accountRepository: AccountRepository
+) {
 
-jwt:
-  key: 123456sdfjasdfjl 
-        
+  @AllowAnonymous
+  @D("参数测试", "详细说明......")
+  suspend fun test1(
+    @D("name", "姓名") name: String?,
+    @D("age", "年龄") age: Int?,
+    @D("list", "列表") list: List<String>?,
+    @D("status", "状态-0正常,1禁用,2删除") status: Status?,
+    @D("account", "账号") account: Account?
+  ) {
+    // 业务逻辑
+  }
+}
+```
+
+### 2. 据库支持
+
+#### Repository 模式
+
+```kotlin
+interface AccountRepository : Repository<Long, Account> {
+  suspend fun getByName(name: String): Account?
+  suspend fun getUserList(userName: String?, phone: String?): List<Account>
+}
+```
+
+#### 事务管理
+
+```kotlin
+suspend fun testTransaction() {
+  withTransaction {
+    accountRepository.update(1L, mapOf("avatar" to "test0001"))
+    
+    // 嵌套事务
+    try {
+      withTransaction {
+        accountRepository.update(1L, mapOf("avatar" to "test002"))
+        throw Meta.error("test transaction", "test transaction")
+      }
+    } catch (e: Exception) {
+      logger.info { "内层事务失败已处理: ${e.message}" }
+    }
+  }
+}
+```
+
+#### 数据库迁移
+
+支持通过实体类注解自动生成数据库变更脚本，遵循版本化管理。
+
+### 3. 安全与认证
+
+- JWT 认证
+- 基于角色的权限控制
+- 自定义安全注解: `@AllowAnonymous`, `@CheckRole`, `@CheckPermission`
+
+### 4. API 文档生成
+
+自动生成 OpenAPI 规范文档，支持与 ApiFox 等 API 工具集成。
+
+### 5. 统一响应处理
+
+标准化的 JSON 响应格式:
+
+```json
+{
+  "code": 200,
+  "message": "Success",
+  "data": { ... },
+  "requestId": "1899712678486753280"
+}
+```
+
+### 6. 全局异常处理
+
+统一捕获和处理异常，转换为友好的 API 响应。
+
+### 7. 配置管理
+
+支持 YAML 配置，环境变量和系统属性覆盖，多环境配置。
+
+## 快速开始
+
+### 环境要求
+
+- JDK 17+
+- PostgreSQL 数据库
+- Redis (可选)
+
+### 构建与运行
+
+1. **克隆项目**
+
+```bash
+git clone https://github.com/yourusername/vertx-pj.git
+cd vertx-pj
+```
+
+2. **配置数据库**
+
+编辑 `vertx-demo/src/main/resources/config/application-database.yml`
+
+```yaml
 databases:
   name: vertx-demo
   host: 127.0.0.1
   port: 5432
-  username: root
-  password: 123456
-
-redis:
-  host: 127.0.0.1
-  port: 6379
-  database: 0
-  password: xxx
-  maxPoolSize: 8
-  maxPoolWaiting: 2000
-
-apifox:
-  token: APS-xxxxxxxxxxxxxxx
-  projectId: xxxxxx
-  folderId: xxxxxx
+  username: your_username
+  password: your_password
 ```
 
-#### 2. 创建Controller
+3. **构建项目**
+
+```bash
+./gradlew clean build
+```
+
+4. **运行项目**
+
+```bash
+./gradlew :vertx-demo:run
+```
+
+## 创建新API
+
+1. 创建实体类
+
 ```kotlin
-@Controller("/user")
-class UserController @Inject constructor(
-    private val userService: UserService
-) {
-    @D("获取用户详情")
-    @CheckRole("admin", mode = Mode.OR) // 权限控制
-    suspend fun getDetail(
-        ctx: RoutingContext,
-        @D("userId") userId: Long
-    ): User {
-        return userService.getDetail(userId)
-    }
+@TableName("users")
+class User : BaseEntity() {
+  @TableId(type = IdType.ASSIGN_ID)
+  var userId: Long = 0L
+  
+  @TableField("user_name")
+  var userName: String? = ""
+  
+  var status: Status? = Status.ACTIVE
 }
 ```
 
-#### 3. 定义Service
+2. 创建Repository
+
+```kotlin
+interface UserRepository : Repository<Long, User> {
+  suspend fun findByName(name: String): User?
+}
+```
+
+3. 创建Service
+
 ```kotlin
 class UserService @Inject constructor(
-   private val snowflake: Snowflake,
-   private val userRepository: UserRepository
+  private val userRepository: UserRepository
 ) {
-    suspend fun createUser(dto: UserDTO): Long {
-        return userRepository.create(dto.toEntity(snowflake))
-    }
-    
-    suspend fun batchUpdate(ids: List<Long>) {
-        withTransaction() {
-            ids.forEach { id ->
-                userRepository.update(id, mapOf("status" to 1))
-            }
-        }
-    }
+  suspend fun getUserByName(name: String): User? {
+    return userRepository.findByName(name)
+  }
 }
 ```
 
-#### 4. 实现Repository
+4. 创建Controller
+
 ```kotlin
-@ImplementedBy(UserRepositoryImpl::class)
-interface UserRepository : Repository<Long, User> {
-    suspend fun findByEmail(email: String): User?
-}
-
-@Singleton
-class UserRepositoryImpl @Inject constructor(sqlClient: SqlClient) 
-    : RepositoryImpl<Long, User>(sqlClient), UserRepository {
-    
-    override suspend fun findByEmail(email: String): User? {
-        return queryBuilder()
-            .eq(User::email, email)
-            .getOne()
-    }
-}
-```
-
-#### 5. 数据库实体
-```kotlin
-@TableName("sys_user")
-data class User(
-    @TableId(type = IdType.ASSIGN_ID)
-    @TableField("user_id")
-    val userId: Long = 0,
-    
-    @TableField("user_name")
-    val userName: String,
-    
-    @TableField(fill = FieldFill.INSERT)
-    val createTime: LocalDateTime = LocalDateTime.now()
-)
-```
-
-#### 6. 运行与测试
-```bash
-# 启动应用
-gradle run
-
-# 生成的API文档
-http://localhost:8080/api/docs
-
-# 示例请求
-POST /api/auth/login
-Content-Type: application/json
-
-{
-  "username": "admin",
-  "password": "123456"
-}
-```
-
----
-
-### 高级功能
-
-#### 事务管理
-```kotlin
-suspend fun transfer(from: Long, to: Long, amount: Double) {
-    withTransaction {
-        accountRepository.deductBalance(tx, from, amount)
-        accountRepository.addBalance(tx, to, amount)
-    }
-}
-```
-
-#### 复杂查询
-```kotlin
-val users = queryBuilder()
-    .like(User::name, "%张%")
-    .between("create_time", start, end)
-    .orderByDesc("user_id")
-    .getList()
-```
-
-#### 自定义响应
-```kotlin
-@CustomizeResponse
-suspend fun customResponse(): RespBean {
-    return RespBean.success("自定义格式")
-}
-```
-
-#### 权限配置
-```kotlin
-@CheckRole(value = ["admin", "supervisor"], mode = Mode.OR)
-@CheckPermission(value = ["user:write", "user:update"])
-suspend fun sensitiveOperation() {
-    // 需要admin或supervisor角色
-    // 且拥有user:write或user:update权限
+@D("用户管理")
+@Controller("/users")
+class UserController @Inject constructor(
+  private val userService: UserService
+) {
+  @D("通过用户名获取用户")
+  suspend fun getByName(
+    @D("name", "用户名") name: String
+  ): User? {
+    return userService.getUserByName(name)
+  }
 }
 ```
 
