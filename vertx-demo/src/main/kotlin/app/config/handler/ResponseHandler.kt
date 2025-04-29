@@ -6,13 +6,13 @@ import io.vertx.ext.web.RoutingContext
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.aikrai.vertx.http.RespBean
 import org.aikrai.vertx.jackson.JsonUtil
-import org.aikrai.vertx.resp.ResponseHandlerInterface
+import org.aikrai.vertx.resp.ResponseHandler
 
 /**
  * 响应处理器，负责处理API响应
  */
 @Singleton
-class ResponseHandler : ResponseHandlerInterface {
+class ResponseHandler : ResponseHandler {
   private val logger = KotlinLogging.logger { }
 
   /**
@@ -32,17 +32,17 @@ class ResponseHandler : ResponseHandlerInterface {
         responseData.requestId = requestId
         JsonUtil.toJsonStr(responseData)
       }
-      // 否则使用RespBean包装
       else -> {
-        val respBean = RespBean.Companion.success(responseData)
+        val respBean = RespBean.success(responseData)
         respBean.requestId = requestId
         code = respBean.code
         JsonUtil.toJsonStr(respBean)
       }
     }
-    ctx.put("responseData", resStr) // 存储响应内容用于日志
+    ctx.put("responseData", resStr)
 
-    if (customizeResponse) return // 如果需要自定义响应，则不发送标准响应
+    // 如果需要自定义响应，则不发送标准响应
+    if (customizeResponse) return
 
     ctx.response()
       .setStatusCode(code)

@@ -8,7 +8,7 @@ import org.aikrai.vertx.jackson.JsonUtil
 /**
  * 默认响应处理器实现
  */
-class DefaultResponseHandler : ResponseHandlerInterface {
+class DefaultResponseHandler : ResponseHandler {
 
     /**
      * 处理成功响应
@@ -25,7 +25,7 @@ class DefaultResponseHandler : ResponseHandlerInterface {
         respBean.requestId = requestId
         
         val resStr = JsonUtil.toJsonStr(respBean)
-        // 存储响应内容用于日志
+        // 存储响应
         ctx.put("responseData", resStr)
         
         // 如果需要自定义响应，则不发送标准响应

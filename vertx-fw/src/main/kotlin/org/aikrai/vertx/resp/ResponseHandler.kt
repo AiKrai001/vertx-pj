@@ -5,7 +5,7 @@ import io.vertx.ext.web.RoutingContext
 /**
  * 响应处理器接口，负责处理API响应
  */
-interface ResponseHandlerInterface {
+interface ResponseHandler {
     /**
      * 处理成功响应
      *

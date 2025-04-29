@@ -46,7 +46,7 @@ class TokenService @Inject constructor(
     val token = IdUtil.randomUUID()
     val userInfo = accountRepository.getInfo(userId)
     val user = userInfo?.account ?: throw Meta.notFound("AccountNotFound", "账号不存在")
-    val authInfo = AuthUser(token, JsonUtil.toJsonObject(user), userInfo.rolesArr.toSet(), userInfo.accessArr.toSet(), ip, client)
+    val authInfo = AuthUser(userInfo.account.userId, token, JsonUtil.toJsonObject(user), userInfo.rolesArr.toSet(), userInfo.accessArr.toSet(), ip, client)
     val authInfoStr = JsonUtil.toJsonStr(authInfo)
     redisClient.set(CacheConstants.LOGIN_TOKEN_KEY + token, authInfoStr, expireSeconds)
     return genToken(mapOf(Constants.LOGIN_USER_KEY to token))

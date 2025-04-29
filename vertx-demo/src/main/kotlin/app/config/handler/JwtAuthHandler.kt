@@ -9,7 +9,6 @@ import kotlinx.coroutines.launch
 import org.aikrai.vertx.config.ServerConfig
 import org.aikrai.vertx.constant.HttpStatus
 import org.aikrai.vertx.utlis.Meta
-import org.slf4j.MDC
 
 /**
  * JWT认证处理器
@@ -23,21 +22,15 @@ class JwtAuthHandler @Inject constructor(
     val path = ctx.request().path().replace("${serverConfig.context}/", "/").replace("//", "/")
     if (isPathExcluded(path, anonymous)) {
       ctx.next()
+      return
     }
 
     scope.launch {
       try {
         val user = tokenService.getLoginUser(ctx)
         ctx.setUser(user)
-
-        // 将用户ID放入MDC
-        user.principal().getString("sub")?.let { userId ->
-          MDC.put("userId", userId)
-        }
         ctx.next()
       } catch (e: Throwable) {
-        MDC.remove("userId")
-
         val metaError = when (e) {
           is Meta -> e
           else -> Meta.unauthorized(e.message ?: "认证失败")

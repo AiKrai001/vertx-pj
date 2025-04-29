@@ -40,10 +40,10 @@ class ApifoxClient @Inject constructor(
       .sendJsonObject(requestBody) { ar ->
         if (ar.succeeded()) {
           val response = ar.result()
-          logger.info("Received response with status code: ${response.statusCode()}")
-          logger.info("Response body: ${response.bodyAsString()}")
+          logger.info { "Received response with status code: ${response.statusCode()}" }
+          logger.info { "Response body: ${response.bodyAsString()}" }
         } else {
-          logger.warn("Request failed: ${ar.cause().message}")
+          logger.warn { "Request failed: ${ar.cause().message}" }
         }
       }
   }

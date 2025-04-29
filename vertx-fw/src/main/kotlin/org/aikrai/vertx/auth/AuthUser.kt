@@ -5,6 +5,7 @@ import io.vertx.ext.auth.impl.UserImpl
 import org.aikrai.vertx.utlis.Meta
 
 class AuthUser(
+  val id: Long,
   val token: String,
   val user: JsonObject,
   val roles: Set<String>,

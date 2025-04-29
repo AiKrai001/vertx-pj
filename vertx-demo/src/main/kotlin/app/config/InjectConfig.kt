@@ -44,11 +44,9 @@ class InjectorModule(
     bind(Pool::class.java).toProvider(DbPoolProvider::class.java).`in`(Singleton::class.java)
     bind(SqlClient::class.java).to(Pool::class.java)
 
-    // 5. 绑定 JWTAuth
     bind(JWTAuth::class.java).toProvider(JWTAuthProvider::class.java).`in`(Singleton::class.java)
-    
-    // 6. 绑定错误处理和日志组件
-    bind(GlobalErrorHandler::class.java).`in`(Singleton::class.java)
+
     bind(RequestLogHandler::class.java).`in`(Singleton::class.java)
+    bind(GlobalErrorHandler::class.java).`in`(Singleton::class.java)
   }
 }

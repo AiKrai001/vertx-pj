@@ -33,7 +33,8 @@ class Demo1Controller @Inject constructor(
     @D("account", "账号") account: Account?
   ) {
     logger.info { "你好" }
-    throw Meta.error("test", "test")
+//    throw Meta.error("TestError", "测试错误")
+//    throw IllegalArgumentException("测试错误")
     println(age)
     println(list)
     println("test-$name")

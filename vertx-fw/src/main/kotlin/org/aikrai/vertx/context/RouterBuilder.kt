@@ -13,7 +13,7 @@ import org.aikrai.vertx.auth.AuthUser.Companion.validateAuth
 import org.aikrai.vertx.db.annotation.EnumValue
 import org.aikrai.vertx.jackson.JsonUtil
 import org.aikrai.vertx.resp.DefaultResponseHandler
-import org.aikrai.vertx.resp.ResponseHandlerInterface
+import org.aikrai.vertx.resp.ResponseHandler
 import org.aikrai.vertx.utlis.ClassUtil
 import org.aikrai.vertx.utlis.Meta
 import org.reflections.Reflections
@@ -34,7 +34,7 @@ class RouterBuilder(
   private val coroutineScope: CoroutineScope,
   private val router: Router,
   private val scanPath: String? = null,
-  private val responseHandler: ResponseHandlerInterface = DefaultResponseHandler()
+  private val responseHandler: ResponseHandler = DefaultResponseHandler()
 ) {
   // 不需要认证的路径集合
   val anonymousPaths = mutableListOf<String>()
