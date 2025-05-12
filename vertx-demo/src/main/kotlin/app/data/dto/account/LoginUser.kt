@@ -1,4 +1,4 @@
-package app.base.domain.auth.modle
+package app.data.dto.account
 
 class LoginUser {
   var accountId: Long = 0L

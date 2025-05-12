@@ -1,6 +1,6 @@
 package app.controller
 
-import app.data.domain.account.LoginDTO
+import app.data.dto.account.LoginDTO
 import app.service.account.AccountService
 import com.google.inject.Inject
 import io.vertx.ext.web.RoutingContext

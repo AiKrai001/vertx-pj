@@ -1,4 +1,4 @@
-package app.base.domain.auth.menu
+package app.data.emun
 
 enum class MenuType(val desc: String) {
   M("目录"),
@@ -8,7 +8,7 @@ enum class MenuType(val desc: String) {
   companion object {
     fun parse(value: String?): MenuType? {
       if (value.isNullOrBlank()) return null
-      return MenuType.values().find { it.name == value || it.desc == value }
+      return MenuType.entries.find { it.name == value || it.desc == value }
     }
   }
 }

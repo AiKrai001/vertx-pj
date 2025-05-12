@@ -1,16 +1,15 @@
-package app.port.aipfox
+package app.utils.openapi
 
-import app.util.openapi.OpenApiSpecGenerator
 import com.google.inject.Inject
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.vertx.core.Vertx
 import io.vertx.core.http.HttpMethod
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.client.WebClient
 import io.vertx.ext.web.client.WebClientOptions
-import io.github.oshai.kotlinlogging.KotlinLogging
 import org.aikrai.vertx.config.Config
 
-class ApifoxClient @Inject constructor(
+class ApifoxUtil @Inject constructor(
   private val vertx: Vertx,
 ) {
   private val logger = KotlinLogging.logger { }

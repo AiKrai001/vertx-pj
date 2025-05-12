@@ -1,5 +1,7 @@
-package app.data.domain.menu
+package app.repository
 
+import app.data.domain.menu.Menu
+import app.repository.impl.MenuRepositoryImpl
 import com.google.inject.ImplementedBy
 import org.aikrai.vertx.db.wrapper.Repository
 

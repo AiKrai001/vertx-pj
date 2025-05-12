@@ -1,4 +1,4 @@
-package app.data.domain.menu.modle
+package app.data.dto.menu
 
 import app.data.domain.menu.Menu
 

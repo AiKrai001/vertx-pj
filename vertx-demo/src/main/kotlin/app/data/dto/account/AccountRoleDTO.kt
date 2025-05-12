@@ -1,4 +1,4 @@
-package app.data.domain.account.modle
+package app.data.dto.account
 
 import app.data.domain.role.Role
 

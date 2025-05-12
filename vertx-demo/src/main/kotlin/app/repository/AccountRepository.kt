@@ -1,7 +1,9 @@
-package app.data.domain.account
+package app.repository
 
-import app.data.domain.account.modle.AccountRoleAccessDTO
-import app.data.domain.account.modle.AccountRoleDTO
+import app.data.domain.account.Account
+import app.repository.impl.AccountRepositoryImpl
+import app.data.dto.account.AccountRoleAccessDTO
+import app.data.dto.account.AccountRoleDTO
 import com.google.inject.ImplementedBy
 import org.aikrai.vertx.db.wrapper.Repository
 

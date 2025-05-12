@@ -1,4 +1,4 @@
-package app.data.domain.account.modle
+package app.data.dto.account
 
 import app.data.domain.account.Account
 import app.data.domain.menu.Menu

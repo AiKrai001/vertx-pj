@@ -1,6 +1,8 @@
-package app.data.domain.menu
+package app.service
 
 import app.data.domain.account.Account
+import app.data.domain.menu.Menu
+import app.repository.MenuRepository
 import com.google.inject.Inject
 import com.google.inject.Singleton
 import io.vertx.ext.auth.User
@@ -47,7 +49,7 @@ class MenuManager @Inject constructor(
     perms: String
   ) {
     if (menuRepository.list(menuName).isNotEmpty()) {
-      throw Meta.error("MenuNameConflict", "菜单名称已存在")
+      throw Meta.Companion.error("MenuNameConflict", "菜单名称已存在")
     }
     val menu = Menu().apply {
       this.menuName = menuName
@@ -73,10 +75,10 @@ class MenuManager @Inject constructor(
     visible: String?,
     perms: String?
   ) {
-    val menu = menuRepository.get(menuId) ?: throw Meta.notFound("MenuNotFound", "菜单不存在")
+    val menu = menuRepository.get(menuId) ?: throw Meta.Companion.notFound("MenuNotFound", "菜单不存在")
 
     if (menuName != null && menuName != menu.menuName && menuRepository.list(menuName).isNotEmpty()) {
-      throw Meta.error("MenuNameConflict", "菜单名称已存在")
+      throw Meta.Companion.error("MenuNameConflict", "菜单名称已存在")
     }
 
     menu.apply {

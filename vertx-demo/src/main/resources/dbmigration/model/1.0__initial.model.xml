@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<migration generated="2025-03-21T15:27:45.6470429">
+<migration generated="2025-05-12T11:18:05.3077594">
   <changeSet type="apply">
     <createTable name="sys_menu" pkName="pk_sys_menu">
       <column name="menu_id" notnull="true" primaryKey="true" type="BIGINT"/>
@@ -16,12 +16,15 @@
     </createTable>
     <createTable name="sys_user" pkName="pk_sys_user">
       <column name="user_id" notnull="true" primaryKey="true" type="BIGINT"/>
-      <column name="user_name" type="VARCHAR(255)"/>
-      <column name="user_type" type="VARCHAR(255)"/>
-      <column name="email" type="VARCHAR(255)"/>
-      <column name="phone" type="VARCHAR(255)"/>
-      <column name="avatar" type="VARCHAR(255)"/>
-      <column name="password" type="VARCHAR(255)"/>
+      <column name="dept_id" type="BIGINT"/>
+      <column name="user_name" type="VARCHAR(30)"/>
+      <column name="nick_name" type="VARCHAR(30)"/>
+      <column name="user_type" type="VARCHAR(2)"/>
+      <column name="email" type="VARCHAR(50)"/>
+      <column name="phonenumber" type="VARCHAR(11)"/>
+      <column defaultValue="2" name="sex" type="INTEGER"/>
+      <column name="avatar" type="VARCHAR(100)"/>
+      <column name="password" type="VARCHAR(100)"/>
       <column defaultValue="0" name="status" type="INTEGER"/>
       <column name="del_flag" type="CHAR(1)"/>
       <column name="login_ip" type="VARCHAR(255)"/>

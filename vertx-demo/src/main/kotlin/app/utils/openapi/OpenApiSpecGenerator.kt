@@ -1,4 +1,4 @@
-package app.util.openapi
+package app.utils.openapi
 
 import cn.hutool.core.util.StrUtil
 import io.swagger.v3.core.util.Json

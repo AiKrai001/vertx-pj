@@ -1,4 +1,4 @@
-package app.util
+package app.utils
 
 import com.github.benmanes.caffeine.cache.Caffeine
 import com.google.inject.Singleton

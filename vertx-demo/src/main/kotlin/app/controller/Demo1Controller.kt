@@ -1,7 +1,7 @@
 package app.controller
 
 import app.data.domain.account.Account
-import app.data.domain.account.AccountRepository
+import app.repository.AccountRepository
 import app.data.emun.Status
 import app.service.account.AccountService
 import com.google.inject.Inject

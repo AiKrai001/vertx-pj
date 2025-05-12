@@ -1,4 +1,4 @@
-package app.data.domain.account
+package app.data.dto.account
 
 data class LoginDTO(
   var username: String,

@@ -19,7 +19,7 @@ data class RedisConfig(
     val host: String,
     val port: Int,
     val db: Int,
-    val pass: String?,
+    val password: String?,
     val poolSize: Int = 8,
     val maxPoolWaiting: Int = 32
 )

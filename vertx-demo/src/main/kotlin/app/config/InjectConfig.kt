@@ -2,6 +2,7 @@ package app.config
 
 import app.config.provider.JWTAuthProvider
 import app.config.provider.DbPoolProvider
+import app.config.provider.RedisProvider
 import cn.hutool.core.lang.Snowflake
 import cn.hutool.core.util.IdUtil
 import com.google.inject.AbstractModule
@@ -10,6 +11,7 @@ import com.google.inject.Injector
 import com.google.inject.Singleton
 import io.vertx.core.Vertx
 import io.vertx.ext.auth.jwt.JWTAuth
+import io.vertx.redis.client.Redis
 import io.vertx.sqlclient.Pool
 import io.vertx.sqlclient.SqlClient
 import kotlinx.coroutines.CoroutineScope
@@ -41,6 +43,7 @@ class InjectorModule(
 
     bind(Snowflake::class.java).toInstance(IdUtil.getSnowflake())
 
+    bind(Redis::class.java).toProvider(RedisProvider::class.java).`in`(Singleton::class.java)
     bind(Pool::class.java).toProvider(DbPoolProvider::class.java).`in`(Singleton::class.java)
     bind(SqlClient::class.java).to(Pool::class.java)
 

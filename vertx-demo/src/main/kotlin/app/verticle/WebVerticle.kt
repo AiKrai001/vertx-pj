@@ -2,7 +2,7 @@ package app.verticle
 
 import app.config.handler.JwtAuthHandler
 import app.config.handler.ResponseHandler
-import app.port.aipfox.ApifoxClient
+import app.utils.openapi.ApifoxUtil
 import com.google.inject.Inject
 import com.google.inject.Injector
 import io.vertx.core.http.HttpMethod
@@ -27,7 +27,7 @@ class WebVerticle @Inject constructor(
   private val requestLogHandler: RequestLogHandler,
   private val responseHandler: ResponseHandler,
   private val globalErrorHandler: GlobalErrorHandler,
-  private val apiFoxClient: ApifoxClient,
+  private val apiFoxUtil: ApifoxUtil,
   ) : CoroutineVerticle() {
   private val logger = KotlinLogging.logger { }
 
@@ -42,7 +42,7 @@ class WebVerticle @Inject constructor(
       .listen(serverConfig.port)
       .coAwait()
     // 生成ApiFox接口
-    apiFoxClient.importOpenapi()
+    apiFoxUtil.importOpenapi()
     logger.info { "HTTP服务启动 - http://127.0.0.1:${server.actualPort()}${serverConfig.context}" }
   }
 

@@ -1,7 +1,9 @@
-package app.data.domain.account
+package app.repository.impl
 
-import app.data.domain.account.modle.AccountRoleAccessDTO
-import app.data.domain.account.modle.AccountRoleDTO
+import app.data.domain.account.Account
+import app.data.dto.account.AccountRoleAccessDTO
+import app.data.dto.account.AccountRoleDTO
+import app.repository.AccountRepository
 import com.google.inject.Inject
 import io.vertx.sqlclient.SqlClient
 import org.aikrai.vertx.db.wrapper.RepositoryImpl
@@ -16,7 +18,7 @@ class AccountRepositoryImpl @Inject constructor(
   ): List<Account> {
     return queryBuilder()
       .eq(!userName.isNullOrBlank(), Account::userName, userName)
-      .eq(!phone.isNullOrBlank(), Account::phone, phone)
+      .eq(!phone.isNullOrBlank(), Account::phonenumber, phone)
       .getList()
   }
 

@@ -31,7 +31,7 @@ class FrameworkConfigModule : AbstractModule() {
             host = Config.getString("redis.host", "localhost"),
             port = Config.getInt("redis.port", 6379),
             db = Config.getInt("redis.database", 0),
-            pass = Config.getStringOrNull("redis.password"),
+            password = Config.getStringOrNull("redis.password"),
             poolSize = Config.getInt("redis.maxPoolSize", 8),
             maxPoolWaiting = Config.getInt("redis.maxPoolWaiting", 32)
         )

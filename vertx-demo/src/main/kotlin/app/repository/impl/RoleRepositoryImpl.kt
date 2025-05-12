@@ -1,5 +1,7 @@
-package app.data.domain.role
+package app.repository.impl
 
+import app.data.domain.role.Role
+import app.repository.RoleRepository
 import com.google.inject.Inject
 import io.vertx.sqlclient.SqlClient
 import org.aikrai.vertx.db.wrapper.RepositoryImpl
